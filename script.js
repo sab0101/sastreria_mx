@@ -23,6 +23,7 @@ let currentView = "ordenes";
 let editingId = null, editingMeasureId = null;
 let draftPrendas = [], draftPagos = [];
 let ownerUnlocked = false;
+let adminTab = "dashboard";
 let authMode = "login";
 let onboardSedes = [];
 
@@ -271,12 +272,10 @@ function renderRoot(){
           <div class="sub">Seguimiento interno</div>
         </div></div>
         <nav id="nav">
-          <button class="navbtn active" data-view="dashboard"><span class="dot"></span> Dashboard</button>
-          <button class="navbtn" data-view="ordenes"><span class="dot"></span> Órdenes</button>
+          <button class="navbtn active" data-view="ordenes"><span class="dot"></span> Órdenes</button>
           <button class="navbtn" data-view="inventario"><span class="dot"></span> Inventario</button>
           <button class="navbtn" data-view="medidas"><span class="dot"></span> Medidas</button>
-          <button class="navbtn" data-view="comisiones"><span class="dot"></span> Comisiones</button>
-          <button class="navbtn" data-view="config"><span class="dot"></span> Configuración</button>
+          <button class="navbtn" data-view="administracion"><span class="dot"></span> 🛡️ Administración</button>
         </nav>
         <div style="border-top:1px dashed #3a4a5f;padding-top:12px;">
           <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#B9AF9C;margin-bottom:6px;">Sesión activa</div>
@@ -330,16 +329,16 @@ function exportOrdersExcel(){
 }
 function setActiveNav(view){
   document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.view===view));
-  const titles = {dashboard:"Dashboard", ordenes:"Órdenes", inventario:"Inventario", medidas:"Medidas de clientes", comisiones:"Comisiones", config:"Configuración"};
+  const titles = {ordenes:"Órdenes", inventario:"Inventario", medidas:"Medidas de clientes", administracion:"Administración"};
   document.getElementById('pagetitle').textContent = titles[view];
 }
 function renderOwnerLock(){
-  return `<div class="lock"><h2>Acceso del dueño</h2>
-    <p style="color:var(--ink-soft);font-size:13px;">Esta sección solo debe verla el dueño del negocio.</p>
+  return `<div class="lock"><h2>🛡️ Administración</h2>
+    <p style="color:var(--ink-soft);font-size:13px;">Dashboard, Comisiones y Configuración están protegidos. Escribe el PIN del dueño para entrar.</p>
     <input type="password" id="ownerPinInput" placeholder="PIN del dueño" style="width:100%;margin:14px 0;">
     <div id="ownerLockError" style="color:var(--red);font-size:12px;height:16px;"></div>
     <button class="btn gold" id="ownerLockBtn" style="width:100%;">Entrar</button>
-    <p style="color:var(--ink-soft);font-size:11px;margin-top:14px;">El PIN se define y se cambia en Configuración → Zona del dueño.</p>
+    <p style="color:var(--ink-soft);font-size:11px;margin-top:14px;"><a id="forgotPinLink" style="color:var(--navy);cursor:pointer;text-decoration:underline;">¿Olvidaste tu PIN?</a></p>
   </div>`;
 }
 function attachOwnerLockEvents(){
@@ -349,23 +348,69 @@ function attachOwnerLockEvents(){
     else document.getElementById('ownerLockError').textContent = "PIN incorrecto.";
   });
   document.getElementById('ownerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('ownerLockBtn').click(); });
+  document.getElementById('forgotPinLink').addEventListener('click', openForgotPinModal);
+}
+function openForgotPinModal(){
+  document.getElementById('modalBox').innerHTML = `
+    <h2>¿Olvidaste tu PIN?</h2>
+    <p style="color:var(--ink-soft);font-size:13px;">Para restablecerlo, confirma la contraseña de la cuenta con la que iniciaste sesión (<b>${currentUser.email}</b>) y elige un PIN nuevo.</p>
+    <div class="formgrid">
+      <label class="full">Contraseña de tu cuenta <input type="password" id="fp_password"></label>
+      <label class="full">Nuevo PIN <input type="text" id="fp_newpin" placeholder="Ej. 1234"></label>
+    </div>
+    <div class="autherror" id="fpError"></div>
+    <div class="formfoot">
+      <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
+      <button class="btn gold" id="fpSaveBtn" type="button">Restablecer PIN y entrar</button>
+    </div>`;
+  document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
+  document.getElementById('fpSaveBtn').addEventListener('click', async () => {
+    const pass = document.getElementById('fp_password').value;
+    const newPin = document.getElementById('fp_newpin').value.trim();
+    const errEl = document.getElementById('fpError');
+    errEl.textContent = '';
+    if(!pass){ errEl.textContent = 'Escribe tu contraseña.'; return; }
+    if(!newPin){ errEl.textContent = 'Escribe un PIN nuevo.'; return; }
+    try{
+      const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, pass);
+      await currentUser.reauthenticateWithCredential(credential);
+      await saveCompanyConfig({ownerPin: newPin});
+      ownerUnlocked = true;
+      document.getElementById('overlay').classList.remove('show');
+      render();
+    }catch(e){ errEl.textContent = traducirErrorFirebase(e); }
+  });
+  document.getElementById('overlay').classList.add('show');
+}
+function renderAdministracion(){
+  return `
+    ${ownerSessionBar()}
+    <div class="filters" style="margin-bottom:20px;">
+      <button class="btn ${adminTab==='dashboard'?'gold':'ghost'} small" data-admintab="dashboard" type="button">Dashboard</button>
+      <button class="btn ${adminTab==='comisiones'?'gold':'ghost'} small" data-admintab="comisiones" type="button">Comisiones</button>
+      <button class="btn ${adminTab==='config'?'gold':'ghost'} small" data-admintab="config" type="button">Configuración</button>
+    </div>
+    <div id="adminContent"></div>`;
+}
+function attachAdministracionEvents(){
+  wireOwnerSessionBar();
+  document.querySelectorAll('[data-admintab]').forEach(b => b.addEventListener('click', () => { adminTab = b.dataset.admintab; render(); }));
+  const content = document.getElementById('adminContent');
+  if(adminTab === 'dashboard'){ content.innerHTML = renderDashboard(); attachDashboardEvents(); }
+  else if(adminTab === 'comisiones'){ content.innerHTML = renderComisiones(); attachComisionesEvents(); }
+  else if(adminTab === 'config'){ content.innerHTML = renderConfig(); attachConfigEvents(); }
 }
 function render(){
   document.getElementById('todaylabel').textContent = "Hoy: " + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
   setActiveNav(currentView);
   const view = document.getElementById('view');
-  if(currentView === 'dashboard'){
-    if(!ownerUnlocked){ view.innerHTML = renderOwnerLock(); attachOwnerLockEvents(); }
-    else { view.innerHTML = renderDashboard(); attachDashboardEvents(); }
-  }
-  else if(currentView === 'ordenes'){ view.innerHTML = renderOrdenes(); attachOrdenesEvents(); }
+  if(currentView === 'ordenes'){ view.innerHTML = renderOrdenes(); attachOrdenesEvents(); }
   else if(currentView === 'inventario'){ view.innerHTML = renderInventario(); attachInventarioEvents(); }
   else if(currentView === 'medidas'){ view.innerHTML = renderMedidas(); attachMedidasEvents(); }
-  else if(currentView === 'comisiones'){
+  else if(currentView === 'administracion'){
     if(!ownerUnlocked){ view.innerHTML = renderOwnerLock(); attachOwnerLockEvents(); }
-    else { view.innerHTML = renderComisiones(); attachComisionesEvents(); }
+    else { view.innerHTML = renderAdministracion(); attachAdministracionEvents(); }
   }
-  else if(currentView === 'config'){ view.innerHTML = renderConfig(); attachConfigEvents(); }
 }
 
 // ============================================================
@@ -390,16 +435,17 @@ function renderCorteCaja(){
     </div>
     ${pagosDia.length===0 ? '<div class="note">Sin pagos registrados en esta fecha/sucursal.</div>' : ''}`;
 }
+function ownerSessionBar(){
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+    <button class="btn ghost small" id="ownerLockBackBtn" type="button" style="border-color:var(--red);color:var(--red);">🔒 Bloquear esta sección</button>
+  </div>`;
+}
+function wireOwnerSessionBar(){
+  const btn = document.getElementById('ownerLockBackBtn');
+  if(btn) btn.addEventListener('click', () => { ownerUnlocked = false; render(); });
+}
+
 function renderDashboard(){
-  if(!ownerUnlocked){
-    return `<div class="lock"><h2>Acceso del dueño</h2>
-      <p style="color:var(--ink-soft);font-size:13px;">El Dashboard (ingresos, comisiones, rankings) solo lo debe ver el dueño del negocio.</p>
-      <input type="password" id="dashOwnerPin" placeholder="PIN del dueño" style="width:100%;margin:14px 0;">
-      <div id="dashOwnerError" style="color:var(--red);font-size:12px;height:16px;"></div>
-      <button class="btn gold" id="dashUnlockBtn" style="width:100%;">Entrar</button>
-      <p style="color:var(--ink-soft);font-size:11px;margin-top:14px;">Mientras tanto, usa "Órdenes" para registrar tickets y prendas.</p>
-    </div>`;
-  }
   const pendientes = orders.filter(o => o.proceso !== "Terminado");
   const atrasadas = pendientes.filter(o => computeAlert(o).cls === "late");
   const hoy = pendientes.filter(o => computeAlert(o).cls === "today");
@@ -482,15 +528,6 @@ function renderDashboard(){
     </div>`;
 }
 function attachDashboardEvents(){
-  if(!ownerUnlocked){
-    document.getElementById('dashUnlockBtn').addEventListener('click', () => {
-      const val = document.getElementById('dashOwnerPin').value;
-      if(val === (companyConfig.ownerPin || "0000")){ ownerUnlocked = true; render(); }
-      else document.getElementById('dashOwnerError').textContent = "PIN incorrecto.";
-    });
-    document.getElementById('dashOwnerPin').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('dashUnlockBtn').click(); });
-    return;
-  }
   document.getElementById('dashMes').addEventListener('change', e => { window.__dashMes = e.target.value; render(); });
   document.getElementById('dashSede').addEventListener('change', e => { window.__dashSede = e.target.value; render(); });
   document.getElementById('cajaFecha').addEventListener('change', e => { window.__cajaFecha = e.target.value; render(); });
@@ -1034,20 +1071,6 @@ function renderConfig(){
 function renderOwnerZoneConfig(){
   const box = document.getElementById('ownerZoneConfig');
   if(!box) return;
-  if(!ownerUnlocked){
-    box.innerHTML = `
-      <p style="color:var(--ink-soft);font-size:13px;">El PIN y el borrado de cuenta solo los puede ver/cambiar quien tenga el PIN del dueño.</p>
-      <input type="password" id="cfgOwnerPin" placeholder="PIN del dueño" style="max-width:200px;">
-      <div id="cfgOwnerError" style="color:var(--red);font-size:12px;height:16px;margin-top:6px;"></div>
-      <button class="btn gold small" id="cfgUnlockBtn" type="button" style="margin-top:4px;">Desbloquear</button>`;
-    document.getElementById('cfgUnlockBtn').addEventListener('click', () => {
-      const val = document.getElementById('cfgOwnerPin').value;
-      if(val === (companyConfig.ownerPin || "0000")){ ownerUnlocked = true; renderOwnerZoneConfig(); }
-      else document.getElementById('cfgOwnerError').textContent = "PIN incorrecto.";
-    });
-    document.getElementById('cfgOwnerPin').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('cfgUnlockBtn').click(); });
-    return;
-  }
   box.innerHTML = `
     <div class="formgrid">
       <label>PIN del dueño (para Comisiones) <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" style="max-width:160px;"></label>
