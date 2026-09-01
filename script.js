@@ -256,6 +256,15 @@ async function saveMeasurementDoc(m){
   if(id){ await db.collection('companies').doc(companyId).collection('measurements').doc(id).set(data); return id; }
   const ref = await db.collection('companies').doc(companyId).collection('measurements').add(data); return ref.id;
 }
+async function logAudit(accion, detalle){
+  try{
+    await db.collection('companies').doc(companyId).collection('auditlog').add({
+      fecha: new Date().toISOString(),
+      usuario: currentUser.email,
+      accion, detalle: detalle || ""
+    });
+  }catch(e){ console.error('No se pudo registrar auditoría:', e); }
+}
 
 // ============================================================
 // SHELL DE LA APP (sidebar + main), una vez autenticado y configurado
@@ -389,16 +398,36 @@ function renderAdministracion(){
       <button class="btn ${adminTab==='dashboard'?'gold':'ghost'} small" data-admintab="dashboard" type="button">Dashboard</button>
       <button class="btn ${adminTab==='comisiones'?'gold':'ghost'} small" data-admintab="comisiones" type="button">Comisiones</button>
       <button class="btn ${adminTab==='config'?'gold':'ghost'} small" data-admintab="config" type="button">Configuración</button>
+      <button class="btn ${adminTab==='auditoria'?'gold':'ghost'} small" data-admintab="auditoria" type="button">Historial</button>
     </div>
-    <div id="adminContent"></div>`;
+    <div id="adminContent">Cargando…</div>`;
 }
-function attachAdministracionEvents(){
+function renderAuditoriaContent(){
+  const rows = (window.__auditLog || []).map(a => `<tr>
+    <td>${new Date(a.fecha).toLocaleString('es-MX')}</td>
+    <td>${a.usuario}</td>
+    <td>${a.accion}</td>
+    <td>${a.detalle||''}</td>
+  </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin actividad registrada todavía.</td></tr>';
+  return `
+    <div class="note">Últimas ${(window.__auditLog||[]).length} acciones (más recientes primero): quién hizo qué y cuándo.</div>
+    <table class="orders"><thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+async function attachAdministracionEvents(){
   wireOwnerSessionBar();
   document.querySelectorAll('[data-admintab]').forEach(b => b.addEventListener('click', () => { adminTab = b.dataset.admintab; render(); }));
   const content = document.getElementById('adminContent');
   if(adminTab === 'dashboard'){ content.innerHTML = renderDashboard(); attachDashboardEvents(); }
   else if(adminTab === 'comisiones'){ content.innerHTML = renderComisiones(); attachComisionesEvents(); }
   else if(adminTab === 'config'){ content.innerHTML = renderConfig(); attachConfigEvents(); }
+  else if(adminTab === 'auditoria'){
+    content.innerHTML = 'Cargando historial…';
+    try{
+      const snap = await db.collection('companies').doc(companyId).collection('auditlog').orderBy('fecha','desc').limit(100).get();
+      window.__auditLog = snap.docs.map(d=>d.data());
+    }catch(e){ window.__auditLog = []; console.error(e); }
+    content.innerHTML = renderAuditoriaContent();
+  }
 }
 function render(){
   document.getElementById('todaylabel').textContent = "Hoy: " + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
@@ -537,12 +566,25 @@ function attachDashboardEvents(){
 // ============================================================
 // ÓRDENES
 // ============================================================
+function renderRecordatorioBanner(){
+  const activos = orders.filter(o => !o.eliminado && o.proceso !== "Terminado");
+  const hoy = activos.filter(o => computeAlert(o).cls === "today").length;
+  const manana = activos.filter(o => daysDiff(o.fechaEntrega) === 1).length;
+  if(hoy===0 && manana===0) return '';
+  const partes = [];
+  if(hoy>0) partes.push(`${hoy} entrega(s) para HOY`);
+  if(manana>0) partes.push(`${manana} para MAÑANA`);
+  return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">⏰ Tienes ${partes.join(' y ')}. Revísalas antes de que se atrasen.</div>`;
+}
 function renderOrdenes(){
   const sesion = window.__session || "";
   const sedeFilter = sesion || window.__sedeFilter || "";
   const procFilter = window.__procFilter || "";
   const searchTerm = (window.__search || "").toLowerCase();
+  const verPapelera = !!window.__papelera;
   let rows = orders.filter(o => {
+    if(verPapelera){ if(!o.eliminado) return false; }
+    else { if(o.eliminado) return false; }
     if(sedeFilter && o.sede !== sedeFilter) return false;
     if(procFilter && o.proceso !== procFilter) return false;
     if(searchTerm && !(ticketLabel(o.ticket).toLowerCase().includes(searchTerm) || o.cliente.toLowerCase().includes(searchTerm) || o.celular.includes(searchTerm))) return false;
@@ -562,10 +604,10 @@ function renderOrdenes(){
       <td>Reg: ${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}<br>Entr: ${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td>
       <td><span class="procbadge">${o.proceso}</span></td>
       <td>${fmtMoney(o.costo)}<br><span style="color:var(--ink-soft);font-size:11.5px;">saldo ${fmtMoney(pend)}</span></td>
-      <td><span class="badge ${alert.cls}">${alert.label}</span></td>
-      <td><button class="rowbtn" data-edit="${o.id}">Editar</button></td>
+      <td>${verPapelera ? '<span class="badge done">Archivado</span>' : `<span class="badge ${alert.cls}">${alert.label}</span>`}</td>
+      <td><button class="rowbtn" data-edit="${o.id}">${verPapelera?'Ver':'Editar'}</button></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="9" class="empty">Sin órdenes con estos filtros.</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">${verPapelera ? 'La papelera está vacía.' : 'Sin órdenes con estos filtros.'}</td></tr>`;
 
   const procOptions = ['<option value="">Todos los procesos</option>', ...["Pendiente","Haciéndose","Terminado"].map(p=>`<option value="${p}" ${p===procFilter?'selected':''}>${p}</option>`)].join('');
   const sedeControl = sesion
@@ -574,13 +616,17 @@ function renderOrdenes(){
 
   if(sedeNames().length===0) return `<div class="note">Primero agrega al menos una sucursal en Configuración.</div>`;
 
+  const archivadosCount = orders.filter(o=>o.eliminado).length;
+
   return `
+    ${verPapelera ? '' : renderRecordatorioBanner()}
     <div class="filters">
       <input type="text" id="searchInput" placeholder="Buscar ticket, cliente o celular…" value="${window.__search||''}" style="min-width:220px;">
       ${sedeControl}
       <select id="procFilter">${procOptions}</select>
       <span style="flex:1;"></span>
-      <button class="btn gold" id="newOrderBtn">➕ Nueva orden</button>
+      <button class="btn ghost small" id="papeleraBtn" type="button">${verPapelera ? '⬅️ Volver a Órdenes' : `🗑️ Papelera (${archivadosCount})`}</button>
+      ${verPapelera ? '' : '<button class="btn gold" id="newOrderBtn">➕ Nueva orden</button>'}
     </div>
     <table class="orders">
       <thead><tr><th>Ticket</th><th>Cliente</th><th>Prendas</th><th>Sede / Encargado</th><th>Registro / Entrega</th><th>Proceso</th><th>Costo / Saldo</th><th>Alerta</th><th></th></tr></thead>
@@ -592,7 +638,9 @@ function attachOrdenesEvents(){
   const sedeSel = document.getElementById('sedeFilter');
   if(sedeSel) sedeSel.addEventListener('change', e => { window.__sedeFilter = e.target.value; render(); });
   document.getElementById('procFilter').addEventListener('change', e => { window.__procFilter = e.target.value; render(); });
-  document.getElementById('newOrderBtn').addEventListener('click', () => openOrderModal(null));
+  document.getElementById('papeleraBtn').addEventListener('click', () => { window.__papelera = !window.__papelera; render(); });
+  const newBtn = document.getElementById('newOrderBtn');
+  if(newBtn) newBtn.addEventListener('click', () => openOrderModal(null));
   document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); openOrderModal(b.dataset.edit); }));
   document.querySelectorAll('tr[data-view]').forEach(tr => tr.addEventListener('click', () => openDetailModal(tr.dataset.view)));
 }
@@ -725,8 +773,13 @@ function openOrderModal(id){
       <ul>${hist.slice(0,5).map(x=>`<li>${ticketLabel(x.ticket)} — ${new Date(x.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')} — ${(x.prendas||[]).map(p=>p.tipo).join(", ")||"—"} — ${fmtMoney(x.costo)}</li>`).join('')}</ul></div>`;
   } else { historyBox.innerHTML = ""; }
 
-  document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
-  document.getElementById('addPrendaBtn').addEventListener('click', () => { draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", nota:"", precio:0, foto:"", sedeOrigen:document.getElementById('f_sede').value, ubicacionActual:document.getElementById('f_sede').value, movimientos:[]}); renderPrendasRows(); recomputeCostoTotal(); });
+  document.getElementById('cancelBtn').addEventListener('click', () => {
+    if(confirm('¿Cerrar sin guardar los cambios de esta orden?')) document.getElementById('overlay').classList.remove('show');
+  });
+  document.getElementById('addPrendaBtn').addEventListener('click', () => {
+    draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", nota:"", precio:0, foto:"", sedeOrigen:document.getElementById('f_sede').value, ubicacionActual:document.getElementById('f_sede').value, movimientos:[]});
+    renderPrendasRows(); recomputeCostoTotal();
+  });
   document.getElementById('addPagoBtn').addEventListener('click', () => { draftPagos.push({fecha: todayStr(), monto:0, metodo:METODOS[0]}); renderPagosRows(); });
   document.getElementById('saveBtn').addEventListener('click', saveOrderFromModal);
   document.getElementById('overlay').classList.add('show');
@@ -756,10 +809,12 @@ async function saveOrderFromModal(){
     const updated = {...prev, ...data, fechaEntregaReal, id: editingId};
     await saveOrderDoc(updated);
     const idx = orders.findIndex(o=>o.id===editingId); orders[idx] = updated;
+    await logAudit('Editar orden', `${ticketLabel(updated.ticket)} — ${updated.cliente}`);
   }else{
     const newOrder = {...data, fechaEntregaReal: data.proceso==="Terminado" ? todayStr() : null};
     const newId = await saveOrderDoc(newOrder);
     orders.push({...newOrder, id:newId});
+    await logAudit('Crear orden', `${ticketLabel(newOrder.ticket)} — ${newOrder.cliente}`);
   }
   document.getElementById('overlay').classList.remove('show');
   render();
@@ -794,13 +849,30 @@ function openDetailModal(id){
       <button class="btn ghost" id="cancelBtn" type="button">Cerrar</button>
       <button class="btn ghost" id="printClienteBtn" type="button">🖨️ Ticket cliente</button>
       <button class="btn ghost" id="printSastreriaBtn" type="button">🖨️ Copia sastrería</button>
+      ${o.eliminado
+        ? `<button class="btn" id="restoreBtn" type="button" style="background:var(--green);">♻️ Restaurar ticket</button>`
+        : `<button class="btn" id="archiveBtn" type="button" style="background:var(--red);">🗑️ Archivar ticket</button>`}
       <button class="btn gold" id="editFromDetailBtn" type="button">Editar</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('editFromDetailBtn').addEventListener('click', () => openOrderModal(o.id));
   document.getElementById('printClienteBtn').addEventListener('click', () => printTicket(o, 'cliente'));
   document.getElementById('printSastreriaBtn').addEventListener('click', () => printTicket(o, 'sastreria'));
+  const archBtn = document.getElementById('archiveBtn');
+  if(archBtn) archBtn.addEventListener('click', () => toggleArchiveOrder(o, true));
+  const restBtn = document.getElementById('restoreBtn');
+  if(restBtn) restBtn.addEventListener('click', () => toggleArchiveOrder(o, false));
   document.getElementById('overlay').classList.add('show');
+}
+async function toggleArchiveOrder(o, archivar){
+  const msg = archivar ? `¿Archivar el ticket ${ticketLabel(o.ticket)}? Ya no aparecerá en la lista principal, pero puedes restaurarlo desde la Papelera.` : `¿Restaurar el ticket ${ticketLabel(o.ticket)}?`;
+  if(!confirm(msg)) return;
+  const updated = {...o, eliminado: archivar};
+  await saveOrderDoc(updated);
+  const idx = orders.findIndex(x=>x.id===o.id); orders[idx] = updated;
+  await logAudit(archivar ? 'Archivar ticket' : 'Restaurar ticket', `${ticketLabel(o.ticket)} — ${o.cliente}`);
+  document.getElementById('overlay').classList.remove('show');
+  render();
 }
 function printTicket(o, tipo){
   const area = document.getElementById('printArea');
@@ -1083,6 +1155,7 @@ function renderOwnerZoneConfig(){
   document.getElementById('cfgSavePinBtn').addEventListener('click', async () => {
     const ownerPin = document.getElementById('cfg_pin').value.trim() || "0000";
     await saveCompanyConfig({ownerPin});
+    await logAudit('Cambiar PIN del dueño', '');
     alert("PIN actualizado.");
   });
   document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
@@ -1104,7 +1177,16 @@ function renderCfgSedes(){
       else draftSedes[i][f] = e.target.value;
     });
   });
-  document.querySelectorAll('[data-removesede]').forEach(b=>b.addEventListener('click', ()=>{ draftSedes.splice(Number(b.dataset.removesede),1); renderCfgSedes(); }));
+  document.querySelectorAll('[data-removesede]').forEach(b=>b.addEventListener('click', ()=>{
+    const i = Number(b.dataset.removesede);
+    const nombreSede = draftSedes[i].nombre;
+    const activos = orders.filter(o => o.sede === nombreSede && o.proceso !== "Terminado" && !o.eliminado).length;
+    if(activos > 0){
+      alert(`No puedes quitar "${nombreSede}" — tiene ${activos} orden(es) activa(s) (no Terminadas). Termínalas o cámbialas de sede primero.`);
+      return;
+    }
+    draftSedes.splice(i,1); renderCfgSedes();
+  }));
 }
 function attachConfigEvents(){
   renderCfgSedes();
@@ -1118,6 +1200,7 @@ function attachConfigEvents(){
     const sedes = draftSedes.filter(s=>s.nombre.trim()).map(s=>({...s, encargados:(s.encargados||[]).filter(Boolean)}));
     if(!nombreEmpresa || sedes.length===0){ alert("Necesitas un nombre de empresa y al menos una sucursal."); return; }
     await saveCompanyConfig({nombreEmpresa, tiposPrenda, tiposServicio, tiposInventario, sedes});
+    await logAudit('Actualizar configuración', `Empresa: ${nombreEmpresa}, ${sedes.length} sucursal(es)`);
     renderRoot();
   });
 }
@@ -1186,3 +1269,19 @@ auth.onAuthStateChanged(async user => {
   }
   renderRoot();
 });
+
+// Registrar el service worker para que la app sea instalable (PWA)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+// ============================================================
+// PWA: registrar el service worker (permite "Instalar app")
+// ============================================================
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW no registrado:', err));
+  });
+}
