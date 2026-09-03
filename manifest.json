@@ -1,14 +1,26 @@
 {
-  "name": "Sastrería - Seguimiento",
+  "name": "Sastrería - Seguimiento de Órdenes",
   "short_name": "Sastrería",
   "description": "Sistema de seguimiento de órdenes para sastrerías",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/sastreria_mx/index.html",
+  "scope": "/sastreria_mx/",
   "display": "standalone",
   "background_color": "#F7F3EC",
   "theme_color": "#12233A",
+  "orientation": "portrait",
+  "categories": ["business", "productivity"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/sastreria_mx/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sastreria_mx/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

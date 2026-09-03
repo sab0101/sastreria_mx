@@ -3,9 +3,9 @@
 // ============================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAgt-rnX-pjgJU6HFdeKak5iIL80f_Mvu4",
-  authDomain: "sasteriamx.firebaseapp.com",
-  projectId: "sasteriamx",
-  storageBucket: "sasteriamx.firebasestorage.app",
+  authDomain: "sastreriamx.firebaseapp.com",
+  projectId: "sastreriamx",
+  storageBucket: "sastreriamx.firebasestorage.app",
   messagingSenderId: "231548743088",
   appId: "1:231548743088:web:5e23068ee90e1acbb7ba75",
   measurementId: "G-HH05T72XXJ"
@@ -26,6 +26,7 @@ let ownerUnlocked = false;
 let adminTab = "dashboard";
 let authMode = "login";
 let onboardSedes = [];
+let deferredPrompt = null; // Para PWA
 
 const UNIDADES = ["Unidades","Metros"];
 const METODOS = ["Efectivo","Tarjeta","Transferencia"];
@@ -1270,18 +1271,95 @@ auth.onAuthStateChanged(async user => {
   renderRoot();
 });
 
-// Registrar el service worker para que la app sea instalable (PWA)
-if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
-}
-
 // ============================================================
 // PWA: registrar el service worker (permite "Instalar app")
 // ============================================================
-if('serviceWorker' in navigator){
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW no registrado:', err));
+    navigator.serviceWorker.register('/sastreriamx/sw.js', { scope: '/sastreriamx/' })
+      .then(reg => console.log('✅ SW registrado correctamente:', reg))
+      .catch(err => console.log('❌ SW no registrado:', err));
   });
 }
+
+// Capturar evento de instalación de PWA
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  console.log('✅ App lista para instalar');
+  
+  // Mostrar el banner de instalación
+  const banner = document.getElementById('installBanner');
+  if (banner) {
+    banner.classList.add('show');
+  }
+  
+  // Ocultar el botón manual si el banner aparece
+  const manualBtn = document.getElementById('manualInstallBtn');
+  if (manualBtn) {
+    manualBtn.classList.remove('show');
+  }
+});
+
+// Botón de instalación del banner
+document.addEventListener('DOMContentLoaded', () => {
+  const installBtn = document.getElementById('installBtn');
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        console.log('Usuario:', result.outcome);
+        const banner = document.getElementById('installBanner');
+        if (banner) banner.classList.remove('show');
+        const manualBtn = document.getElementById('manualInstallBtn');
+        if (manualBtn) manualBtn.classList.remove('show');
+        deferredPrompt = null;
+      }
+    });
+  }
+  
+  // Botón cerrar banner
+  const closeBtn = document.getElementById('closeBannerBtn');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      const banner = document.getElementById('installBanner');
+      if (banner) banner.classList.remove('show');
+      // Mostrar el botón manual como fallback
+      const manualBtn = document.getElementById('manualInstallBtn');
+      if (manualBtn) manualBtn.classList.add('show');
+    });
+  }
+  
+  // Botón de instalación manual (fallback)
+  const manualBtn = document.getElementById('manualInstallBtn');
+  if (manualBtn) {
+    // Mostrar el botón manual si el banner no aparece después de 3 segundos
+    setTimeout(() => {
+      const banner = document.getElementById('installBanner');
+      if (banner && !banner.classList.contains('show')) {
+        manualBtn.classList.add('show');
+      }
+    }, 3000);
+    
+    manualBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        console.log('Usuario:', result.outcome);
+        manualBtn.classList.remove('show');
+        deferredPrompt = null;
+      } else {
+        alert('🔍 La instalación no está disponible en este navegador.\n\nEn Android: usa el menú de Chrome (⋮) → "Instalar aplicación"\nEn iOS: usa el botón "Compartir" → "Agregar a pantalla de inicio"');
+      }
+    });
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('✅ App instalada correctamente');
+  const banner = document.getElementById('installBanner');
+  if (banner) banner.classList.remove('show');
+  const manualBtn = document.getElementById('manualInstallBtn');
+  if (manualBtn) manualBtn.classList.remove('show');
+});
