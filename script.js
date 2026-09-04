@@ -1,18 +1,24 @@
 // ============================================================
-// TODO: PEGA AQUÍ TU CONFIGURACIÓN DE FIREBASE (ver instrucciones del chat)
+// CONFIGURACIÓN DE FIREBASE - PROYECTO CORRECTO
 // ============================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyAgt-rnX-pjgJU6HFdeKak5iIL80f_Mvu4",
+  apiKey: "AIzaSyAjvLYVBkZ4QVoJFNjjuSjJahNLzb4zAhzgQ",
   authDomain: "sastreriamx.firebaseapp.com",
   projectId: "sastreriamx",
   storageBucket: "sastreriamx.firebasestorage.app",
-  messagingSenderId: "231548743088",
-  appId: "1:231548743088:web:5e23068ee90e1acbb7ba75",
-  measurementId: "G-HH05T72XXJ"
+  messagingSenderId: "3808757673533",
+  appId: "1:3808757673533:web:c4821472b5f1d61a82dc54",
+  measurementId: "G-4774NG52E"
 };
+
+// Inicializar Firebase - SOLO UNA VEZ
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// Habilitar persistencia offline
+db.enablePersistence()
+  .catch(err => console.error('Error de persistencia:', err));
 
 // ============================================================
 // ESTADO GLOBAL
@@ -26,7 +32,7 @@ let ownerUnlocked = false;
 let adminTab = "dashboard";
 let authMode = "login";
 let onboardSedes = [];
-let deferredPrompt = null; // Para PWA
+let deferredPrompt = null;
 
 const UNIDADES = ["Unidades","Metros"];
 const METODOS = ["Efectivo","Tarjeta","Transferencia"];
@@ -73,7 +79,8 @@ function traducirErrorFirebase(e){
     'auth/user-not-found':'No existe una cuenta con ese correo.',
     'auth/wrong-password':'Contraseña incorrecta.',
     'auth/invalid-credential':'Correo o contraseña incorrectos.',
-    'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Falta configurar Firebase: pega tu configuración real en script.js.',
+    'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Falta configurar Firebase.',
+    'permission-denied':'No tienes permisos. Revisa las reglas de Firestore en Firebase Console.',
   };
   return map[e.code] || ('Error: ' + e.message);
 }
@@ -94,12 +101,13 @@ function resizeImage(file, maxW){
     reader.readAsDataURL(file);
   });
 }
+
 const MEDIDAS_DIAGRAMS = {
-  'Saco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"> <rect width="275" height="300" fill="#FBF8F2"/> <path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="30" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Hombro</text> <line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="98" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Pecho</text> <line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="168" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cintura</text> <line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="213" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cadera</text> <line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="173" y="130" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif"></text> <text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text><text x="30" y="270" font-size="9.5" fill="#756A5B" font-style="italic">*Espalda se mide de hombro a hombro</text><text x="30" y="283" font-size="9.5" fill="#756A5B" font-style="italic">por la parte de atrás.</text></svg>',
-  'Chaleco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"> <rect width="275" height="300" fill="#FBF8F2"/> <path d="M105,25 Q120,40 135,25 L150,30 L143,90 L138,150 L143,205 L97,205 L102,150 L97,90 L90,30 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <line x1="90" y1="30" x2="150" y2="30" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="195" y="33" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Hombro</text> <line x1="97" y1="90" x2="143" y2="90" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="195" y="93" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Pecho</text> <line x1="102" y1="150" x2="138" y2="150" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="195" y="153" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cintura</text> <line x1="160" y1="25" x2="160" y2="205" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="163" y="115" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif"></text> <text x="163" y="115" font-size="11" fill="#756A5B">Largo</text><text x="30" y="245" font-size="9.5" fill="#756A5B" font-style="italic">*Espalda se mide de hombro a hombro</text><text x="30" y="258" font-size="9.5" fill="#756A5B" font-style="italic">por la parte de atrás.</text></svg>',
-  'Camisa': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"> <rect width="275" height="300" fill="#FBF8F2"/> <path d="M108,25 Q120,38 132,25 L155,28 L146,95 L137,165 L146,225 L94,225 L103,165 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M85,27 L50,35 L35,170 L55,178 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M155,27 L190,35 L205,170 L185,178 L146,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <circle cx="120" cy="30" r="10" fill="none" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="3,2"/> <text x="140" y="18" font-size="11" fill="#756A5B">Cuello</text> <line x1="85" y1="29" x2="155" y2="29" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="210" y="32" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Hombro</text> <line x1="94" y1="95" x2="146" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="210" y="98" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Pecho</text> <line x1="103" y1="165" x2="137" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="210" y="168" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cintura</text> <text x="12" y="150" font-size="10" fill="#1F3A5F">Manga</text> <line x1="170" y1="25" x2="170" y2="225" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="173" y="128" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif"></text> <text x="173" y="128" font-size="11" fill="#756A5B">Largo</text></svg>',
-  'Pantalón': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"> <rect width="275" height="300" fill="#FBF8F2"/> <path d="M80,20 L160,20 L168,65 L178,250 L150,250 L128,118 L112,118 L90,250 L62,250 L72,65 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <line x1="80" y1="22" x2="160" y2="22" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="225" y="25" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cintura</text> <line x1="72" y1="65" x2="168" y2="65" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="225" y="68" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cadera</text> <line x1="100" y1="185" x2="145" y2="185" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="225" y="188" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Rodilla</text> <line x1="120" y1="118" x2="120" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="70" y="278" font-size="10" fill="#756A5B" text-anchor="middle">Entrepierna</text> <line x1="240" y1="20" x2="240" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="245" y="135" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif"></text> <text x="243" y="135" font-size="10" fill="#756A5B" transform="rotate(-90 243 135)">Largo</text></svg>',
-  'Abrigo': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"> <rect width="275" height="300" fill="#FBF8F2"/> <path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2" stroke-linejoin="round"/> <line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="30" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Hombro</text> <line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="98" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Pecho</text> <line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="168" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cintura</text> <line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="205" y="213" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif">Cadera</text> <line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/> <text x="173" y="130" font-size="11" fill="#756A5B" font-family="IBM Plex Sans, sans-serif"></text> <text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text><text x="30" y="270" font-size="9.5" fill="#756A5B" font-style="italic">*Espalda se mide de hombro a hombro</text><text x="30" y="283" font-size="9.5" fill="#756A5B" font-style="italic">por la parte de atrás.</text></svg>',
+  'Saco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="30" font-size="11" fill="#756A5B">Hombro</text><line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="168" font-size="11" fill="#756A5B">Cintura</text><line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="213" font-size="11" fill="#756A5B">Cadera</text><line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text></svg>',
+  'Chaleco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,40 135,25 L150,30 L143,90 L138,150 L143,205 L97,205 L102,150 L97,90 L90,30 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="90" y1="30" x2="150" y2="30" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="33" font-size="11" fill="#756A5B">Hombro</text><line x1="97" y1="90" x2="143" y2="90" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="93" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="150" x2="138" y2="150" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="153" font-size="11" fill="#756A5B">Cintura</text><line x1="160" y1="25" x2="160" y2="205" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="163" y="115" font-size="11" fill="#756A5B">Largo</text></svg>',
+  'Camisa': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M108,25 Q120,38 132,25 L155,28 L146,95 L137,165 L146,225 L94,225 L103,165 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,27 L50,35 L35,170 L55,178 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,27 L190,35 L205,170 L185,178 L146,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><circle cx="120" cy="30" r="10" fill="none" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="3,2"/><text x="140" y="18" font-size="11" fill="#756A5B">Cuello</text><line x1="85" y1="29" x2="155" y2="29" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="32" font-size="11" fill="#756A5B">Hombro</text><line x1="94" y1="95" x2="146" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="103" y1="165" x2="137" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="168" font-size="11" fill="#756A5B">Cintura</text><text x="12" y="150" font-size="10" fill="#1F3A5F">Manga</text><line x1="170" y1="25" x2="170" y2="225" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="128" font-size="11" fill="#756A5B">Largo</text></svg>',
+  'Pantalón': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M80,20 L160,20 L168,65 L178,250 L150,250 L128,118 L112,118 L90,250 L62,250 L72,65 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="80" y1="22" x2="160" y2="22" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="25" font-size="11" fill="#756A5B">Cintura</text><line x1="72" y1="65" x2="168" y2="65" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="68" font-size="11" fill="#756A5B">Cadera</text><line x1="100" y1="185" x2="145" y2="185" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="188" font-size="11" fill="#756A5B">Rodilla</text><line x1="120" y1="118" x2="120" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="70" y="278" font-size="10" fill="#756A5B" text-anchor="middle">Entrepierna</text><line x1="240" y1="20" x2="240" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="245" y="135" font-size="11" fill="#756A5B">Largo</text></svg>',
+  'Abrigo': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="30" font-size="11" fill="#756A5B">Hombro</text><line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="168" font-size="11" fill="#756A5B">Cintura</text><line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="213" font-size="11" fill="#756A5B">Cadera</text><line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text></svg>',
 };
 
 // ============================================================
@@ -127,6 +135,7 @@ function renderAuthScreen(){
     document.getElementById('toLogin').addEventListener('click', ()=>{ authMode='login'; renderAuthScreen(); });
   }
 }
+
 async function submitAuth(){
   const email = document.getElementById('authEmail').value.trim();
   const pass = document.getElementById('authPassword').value;
@@ -138,6 +147,7 @@ async function submitAuth(){
     else { await auth.createUserWithEmailAndPassword(email, pass); }
   }catch(e){ errEl.textContent = traducirErrorFirebase(e); }
 }
+
 async function sendResetEmail(){
   const email = document.getElementById('authEmail').value.trim();
   const errEl = document.getElementById('authError');
@@ -147,7 +157,7 @@ async function sendResetEmail(){
 }
 
 // ============================================================
-// ONBOARDING (primera vez que inicia sesión una empresa)
+// ONBOARDING
 // ============================================================
 function renderOnboarding(){
   if(onboardSedes.length===0) onboardSedes = [{nombre:'', direccion:'', encargados:['']}];
@@ -161,16 +171,12 @@ function renderOnboarding(){
       <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Sucursales</h3>
       <div id="obSedesList"></div>
       <button class="btn ghost small" id="obAddSede" type="button">+ Agregar sucursal</button>
-
       <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de prenda que manejas (uno por línea)</h3>
       <textarea id="ob_tiposPrenda" rows="4" style="width:100%;padding:8px;" placeholder="Pantalón&#10;Saco&#10;Vestido&#10;Camisa"></textarea>
-
       <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de servicio que ofreces (uno por línea)</h3>
       <textarea id="ob_tiposServicio" rows="4" style="width:100%;padding:8px;" placeholder="Confección nueva&#10;Ajuste / Arreglo&#10;Bastilla"></textarea>
-
       <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">PIN del dueño (para ver Comisiones)</h3>
       <input type="text" id="ob_pin" placeholder="Ej. 1234" style="max-width:160px;">
-
       <div class="autherror" id="obError"></div>
       <div class="formfoot">
         <button class="btn ghost" id="obLogout" type="button">Cerrar sesión</button>
@@ -182,6 +188,7 @@ function renderOnboarding(){
   document.getElementById('obLogout').addEventListener('click', ()=>auth.signOut());
   document.getElementById('obSaveBtn').addEventListener('click', saveOnboarding);
 }
+
 function renderObSedes(){
   document.getElementById('obSedesList').innerHTML = onboardSedes.map((s,i)=>`
     <div class="sedecard">
@@ -201,6 +208,7 @@ function renderObSedes(){
   });
   document.querySelectorAll('[data-removesede]').forEach(b=>b.addEventListener('click', ()=>{ onboardSedes.splice(Number(b.dataset.removesede),1); renderObSedes(); }));
 }
+
 async function saveOnboarding(){
   const nombreEmpresa = document.getElementById('ob_nombre').value.trim();
   const tiposPrenda = document.getElementById('ob_tiposPrenda').value.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -208,55 +216,88 @@ async function saveOnboarding(){
   const ownerPin = document.getElementById('ob_pin').value.trim();
   const errEl = document.getElementById('obError');
   const sedesLimpias = onboardSedes.filter(s=>s.nombre.trim()).map(s=>({...s, encargados: (s.encargados||[]).filter(Boolean)}));
+  
   if(!nombreEmpresa){ errEl.textContent='Ponle un nombre a tu empresa.'; return; }
   if(sedesLimpias.length===0){ errEl.textContent='Agrega al menos una sucursal con nombre.'; return; }
+  
   const cfg = {
-    nombreEmpresa, sedes: sedesLimpias, tiposPrenda, tiposServicio,
+    nombreEmpresa, 
+    sedes: sedesLimpias, 
+    tiposPrenda, 
+    tiposServicio,
     tiposInventario: ["Botones","Cierres","Tela","Hilo","Forro","Otro"],
-    ownerPin: ownerPin || "0000", commissions: {}, createdAt: new Date().toISOString()
+    ownerPin: ownerPin || "0000", 
+    commissions: {}, 
+    createdAt: new Date().toISOString()
   };
-  await db.collection('companies').doc(companyId).set(cfg);
-  companyConfig = cfg;
-  await loadAllData();
-  renderRoot();
+  
+  try {
+    errEl.textContent = '⏳ Guardando...';
+    errEl.style.color = 'var(--green)';
+    console.log('📤 Guardando configuración en Firebase...');
+    await db.collection('companies').doc(companyId).set(cfg);
+    errEl.textContent = '✅ ¡Guardado correctamente!';
+    companyConfig = cfg;
+    await loadAllData();
+    setTimeout(() => { renderRoot(); }, 500);
+  } catch(e) {
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = '❌ Error: ' + traducirErrorFirebase(e);
+    console.error('Error completo:', e);
+  }
 }
 
 // ============================================================
-// CAPA DE DATOS (Firestore, aislado por empresa = companyId)
+// CAPA DE DATOS
 // ============================================================
 async function loadCompanyConfig(){
-  const doc = await db.collection('companies').doc(companyId).get();
-  return doc.exists ? doc.data() : null;
+  try {
+    const doc = await db.collection('companies').doc(companyId).get();
+    return doc.exists ? doc.data() : null;
+  } catch(e) {
+    console.error('Error cargando configuración:', e);
+    return null;
+  }
 }
+
 async function saveCompanyConfig(partial){
   await db.collection('companies').doc(companyId).set(partial, {merge:true});
   companyConfig = {...companyConfig, ...partial};
 }
+
 async function loadAllData(){
-  const [ordersSnap, invSnap, measSnap] = await Promise.all([
-    db.collection('companies').doc(companyId).collection('orders').get(),
-    db.collection('companies').doc(companyId).collection('inventory').get(),
-    db.collection('companies').doc(companyId).collection('measurements').get(),
-  ]);
-  orders = ordersSnap.docs.map(d=>({id:d.id, ...d.data()}));
-  inventory = invSnap.docs.map(d=>({id:d.id, ...d.data()}));
-  measurements = measSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  try {
+    const [ordersSnap, invSnap, measSnap] = await Promise.all([
+      db.collection('companies').doc(companyId).collection('orders').get(),
+      db.collection('companies').doc(companyId).collection('inventory').get(),
+      db.collection('companies').doc(companyId).collection('measurements').get(),
+    ]);
+    orders = ordersSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    inventory = invSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    measurements = measSnap.docs.map(d=>({id:d.id, ...d.data()}));
+  } catch(e) {
+    console.error('Error cargando datos:', e);
+  }
 }
+
 async function saveOrderDoc(order){
   const {id, ...data} = order;
   if(id){ await db.collection('companies').doc(companyId).collection('orders').doc(id).set(data); return id; }
   const ref = await db.collection('companies').doc(companyId).collection('orders').add(data); return ref.id;
 }
+
 async function saveInventoryDoc(item){
   const {id, ...data} = item;
   if(id){ await db.collection('companies').doc(companyId).collection('inventory').doc(id).set(data); return id; }
   const ref = await db.collection('companies').doc(companyId).collection('inventory').add(data); return ref.id;
 }
+
 async function saveMeasurementDoc(m){
   const {id, ...data} = m;
   if(id){ await db.collection('companies').doc(companyId).collection('measurements').doc(id).set(data); return id; }
   const ref = await db.collection('companies').doc(companyId).collection('measurements').add(data); return ref.id;
 }
+
 async function logAudit(accion, detalle){
   try{
     await db.collection('companies').doc(companyId).collection('auditlog').add({
@@ -268,7 +309,7 @@ async function logAudit(accion, detalle){
 }
 
 // ============================================================
-// SHELL DE LA APP (sidebar + main), una vez autenticado y configurado
+// SHELL DE LA APP
 // ============================================================
 function renderRoot(){
   const root = document.getElementById('root');
@@ -290,7 +331,7 @@ function renderRoot(){
         <div style="border-top:1px dashed #3a4a5f;padding-top:12px;">
           <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#B9AF9C;margin-bottom:6px;">Sesión activa</div>
           <select id="sessionSede" style="width:100%;font-size:12px;padding:6px 8px;"><option value="">Todas las sucursales (dueño)</option></select>
-          <div style="font-size:10px;color:#7C7261;margin-top:4px;">Filtra Órdenes a tu sucursal. No sustituye una cuenta individual por empleado.</div>
+          <div style="font-size:10px;color:#7C7261;margin-top:4px;">Filtra Órdenes a tu sucursal.</div>
         </div>
         <div style="border-top:1px dashed #3a4a5f;padding-top:12px;display:flex;flex-direction:column;gap:6px;">
           <button class="btn ghost small" id="backupBtn" type="button" style="width:100%;color:#D8CFBE;border-color:#3a4a5f;">💾 Respaldo (JSON)</button>
@@ -311,6 +352,7 @@ function renderRoot(){
   setupSessionSelect();
   render();
 }
+
 function setupSessionSelect(){
   const sel = document.getElementById('sessionSede');
   sedeNames().forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
@@ -319,6 +361,7 @@ function setupSessionSelect(){
   document.getElementById('backupBtn').addEventListener('click', downloadBackup);
   document.getElementById('exportBtn').addEventListener('click', exportOrdersExcel);
 }
+
 function downloadBackup(){
   const data = { empresa: companyConfig.nombreEmpresa, orders, inventory, measurements, commissions: companyConfig.commissions||{}, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -326,6 +369,7 @@ function downloadBackup(){
   const a = document.createElement('a'); a.href = url; a.download = `respaldo_${companyId}_${todayStr()}.json`; a.click();
   URL.revokeObjectURL(url);
 }
+
 function exportOrdersExcel(){
   const rows = orders.map(o => ({
     Ticket: ticketLabel(o.ticket), "Fecha del registro": o.fechaRecibido, "Fecha de entrega": o.fechaEntrega,
@@ -337,11 +381,32 @@ function exportOrdersExcel(){
   XLSX.utils.book_append_sheet(wb, ws, "Órdenes");
   XLSX.writeFile(wb, `ordenes_${todayStr()}.xlsx`);
 }
+
 function setActiveNav(view){
   document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('active', b.dataset.view===view));
   const titles = {ordenes:"Órdenes", inventario:"Inventario", medidas:"Medidas de clientes", administracion:"Administración"};
   document.getElementById('pagetitle').textContent = titles[view];
 }
+
+// ============================================================
+// RENDER PRINCIPAL
+// ============================================================
+function render(){
+  document.getElementById('todaylabel').textContent = "Hoy: " + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+  setActiveNav(currentView);
+  const view = document.getElementById('view');
+  if(currentView === 'ordenes'){ view.innerHTML = renderOrdenes(); attachOrdenesEvents(); }
+  else if(currentView === 'inventario'){ view.innerHTML = renderInventario(); attachInventarioEvents(); }
+  else if(currentView === 'medidas'){ view.innerHTML = renderMedidas(); attachMedidasEvents(); }
+  else if(currentView === 'administracion'){
+    if(!ownerUnlocked){ view.innerHTML = renderOwnerLock(); attachOwnerLockEvents(); }
+    else { view.innerHTML = renderAdministracion(); attachAdministracionEvents(); }
+  }
+}
+
+// ============================================================
+// ADMINISTRACIÓN
+// ============================================================
 function renderOwnerLock(){
   return `<div class="lock"><h2>🛡️ Administración</h2>
     <p style="color:var(--ink-soft);font-size:13px;">Dashboard, Comisiones y Configuración están protegidos. Escribe el PIN del dueño para entrar.</p>
@@ -351,6 +416,7 @@ function renderOwnerLock(){
     <p style="color:var(--ink-soft);font-size:11px;margin-top:14px;"><a id="forgotPinLink" style="color:var(--navy);cursor:pointer;text-decoration:underline;">¿Olvidaste tu PIN?</a></p>
   </div>`;
 }
+
 function attachOwnerLockEvents(){
   document.getElementById('ownerLockBtn').addEventListener('click', () => {
     const val = document.getElementById('ownerPinInput').value;
@@ -360,6 +426,7 @@ function attachOwnerLockEvents(){
   document.getElementById('ownerPinInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('ownerLockBtn').click(); });
   document.getElementById('forgotPinLink').addEventListener('click', openForgotPinModal);
 }
+
 function openForgotPinModal(){
   document.getElementById('modalBox').innerHTML = `
     <h2>¿Olvidaste tu PIN?</h2>
@@ -392,6 +459,7 @@ function openForgotPinModal(){
   });
   document.getElementById('overlay').classList.add('show');
 }
+
 function renderAdministracion(){
   return `
     ${ownerSessionBar()}
@@ -403,17 +471,18 @@ function renderAdministracion(){
     </div>
     <div id="adminContent">Cargando…</div>`;
 }
-function renderAuditoriaContent(){
-  const rows = (window.__auditLog || []).map(a => `<tr>
-    <td>${new Date(a.fecha).toLocaleString('es-MX')}</td>
-    <td>${a.usuario}</td>
-    <td>${a.accion}</td>
-    <td>${a.detalle||''}</td>
-  </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin actividad registrada todavía.</td></tr>';
-  return `
-    <div class="note">Últimas ${(window.__auditLog||[]).length} acciones (más recientes primero): quién hizo qué y cuándo.</div>
-    <table class="orders"><thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+function ownerSessionBar(){
+  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+    <button class="btn ghost small" id="ownerLockBackBtn" type="button" style="border-color:var(--red);color:var(--red);">🔒 Bloquear esta sección</button>
+  </div>`;
 }
+
+function wireOwnerSessionBar(){
+  const btn = document.getElementById('ownerLockBackBtn');
+  if(btn) btn.addEventListener('click', () => { ownerUnlocked = false; render(); });
+}
+
 async function attachAdministracionEvents(){
   wireOwnerSessionBar();
   document.querySelectorAll('[data-admintab]').forEach(b => b.addEventListener('click', () => { adminTab = b.dataset.admintab; render(); }));
@@ -430,17 +499,17 @@ async function attachAdministracionEvents(){
     content.innerHTML = renderAuditoriaContent();
   }
 }
-function render(){
-  document.getElementById('todaylabel').textContent = "Hoy: " + new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
-  setActiveNav(currentView);
-  const view = document.getElementById('view');
-  if(currentView === 'ordenes'){ view.innerHTML = renderOrdenes(); attachOrdenesEvents(); }
-  else if(currentView === 'inventario'){ view.innerHTML = renderInventario(); attachInventarioEvents(); }
-  else if(currentView === 'medidas'){ view.innerHTML = renderMedidas(); attachMedidasEvents(); }
-  else if(currentView === 'administracion'){
-    if(!ownerUnlocked){ view.innerHTML = renderOwnerLock(); attachOwnerLockEvents(); }
-    else { view.innerHTML = renderAdministracion(); attachAdministracionEvents(); }
-  }
+
+function renderAuditoriaContent(){
+  const rows = (window.__auditLog || []).map(a => `<tr>
+    <td>${new Date(a.fecha).toLocaleString('es-MX')}</td>
+    <td>${a.usuario}</td>
+    <td>${a.accion}</td>
+    <td>${a.detalle||''}</td>
+  </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin actividad registrada todavía.</td></tr>';
+  return `
+    <div class="note">Últimas ${(window.__auditLog||[]).length} acciones.</div>
+    <table class="orders"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 // ============================================================
@@ -450,6 +519,7 @@ function getMonthsAvailable(){
   const set = new Set(orders.map(o=>o.fechaRecibido.slice(0,7)));
   return Array.from(set).sort().reverse();
 }
+
 function renderCorteCaja(){
   const fecha = window.__cajaFecha || todayStr();
   const sede = window.__cajaSede || "";
@@ -464,15 +534,6 @@ function renderCorteCaja(){
       <div class="kpi green"><div class="num">${fmtMoney(total)}</div><div class="lbl">Total del día</div></div>
     </div>
     ${pagosDia.length===0 ? '<div class="note">Sin pagos registrados en esta fecha/sucursal.</div>' : ''}`;
-}
-function ownerSessionBar(){
-  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-    <button class="btn ghost small" id="ownerLockBackBtn" type="button" style="border-color:var(--red);color:var(--red);">🔒 Bloquear esta sección</button>
-  </div>`;
-}
-function wireOwnerSessionBar(){
-  const btn = document.getElementById('ownerLockBackBtn');
-  if(btn) btn.addEventListener('click', () => { ownerUnlocked = false; render(); });
 }
 
 function renderDashboard(){
@@ -525,14 +586,12 @@ function renderDashboard(){
     </div>
     <h2 class="section-title">Resumen por sucursal</h2>
     <table class="orders"><thead><tr><th>Sucursal</th><th>Pendientes</th><th>Atrasadas</th><th>Ingresos del mes</th></tr></thead><tbody>${sedeRows}</tbody></table>
-
     <h2 class="section-title">Corte de caja del día</h2>
     <div class="filters">
       <input type="date" id="cajaFecha" value="${window.__cajaFecha || todayStr()}">
       <select id="cajaSede">${['<option value="">Todas las sucursales</option>', ...sedeNames().map(s=>`<option value="${s}" ${s===(window.__cajaSede||"")?'selected':''}>${s}</option>`)].join('')}</select>
     </div>
     ${renderCorteCaja()}
-
     <h2 class="section-title">Cumplimiento de entregas</h2>
     <div class="filters">
       <select id="dashMes">${monthOptions}</select>
@@ -541,22 +600,22 @@ function renderDashboard(){
     <div class="barchart">
       <div class="bar-row"><div class="label">A tiempo</div><div class="bar-track"><div class="bar-fill ontime" style="width:${(onTimeF/totalF*100).toFixed(0)}%">${onTimeF}</div></div></div>
       <div class="bar-row"><div class="label">Atrasadas</div><div class="bar-track"><div class="bar-fill late" style="width:${(lateF/totalF*100).toFixed(0)}%">${lateF}</div></div></div>
-      ${terminadosF.length===0 ? '<div class="note" style="margin:0;">No hay órdenes Terminadas con estos filtros todavía.</div>' : `<div class="note" style="margin:8px 0 0;">Sobre ${terminadosF.length} orden(es) entregada(s) en este filtro.</div>`}
+      ${terminadosF.length===0 ? '<div class="note" style="margin:0;">No hay órdenes Terminadas con estos filtros.</div>' : `<div class="note" style="margin:8px 0 0;">${terminadosF.length} orden(es) entregada(s).</div>`}
     </div>
-
     <div class="rank-grid">
       <div>
-        <h2 class="section-title" style="margin-top:0;">Ranking de atrasos (encargado/sucursal)</h2>
-        <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Atrasos</th><th>De sus órdenes</th></tr></thead>
-        <tbody>${atrasoRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--red);">${a.atrasos}</b></td><td>${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Sin atrasos en este filtro 🎉</td></tr>'}</tbody></table>
+        <h2 class="section-title" style="margin-top:0;">Ranking de atrasos</h2>
+        <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Atrasos</th><th>Total</th></tr></thead>
+        <tbody>${atrasoRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--red);">${a.atrasos}</b></td><td>${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">🎉 Sin atrasos</td></tr>'}</tbody></table>
       </div>
       <div>
-        <h2 class="section-title" style="margin-top:0;">Ranking de mayores ventas</h2>
+        <h2 class="section-title" style="margin-top:0;">Ranking de ventas</h2>
         <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Vendido</th></tr></thead>
-        <tbody>${ventaRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--navy);">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos en este filtro.</td></tr>'}</tbody></table>
+        <tbody>${ventaRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--navy);">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table>
       </div>
     </div>`;
 }
+
 function attachDashboardEvents(){
   document.getElementById('dashMes').addEventListener('change', e => { window.__dashMes = e.target.value; render(); });
   document.getElementById('dashSede').addEventListener('change', e => { window.__dashSede = e.target.value; render(); });
@@ -575,8 +634,9 @@ function renderRecordatorioBanner(){
   const partes = [];
   if(hoy>0) partes.push(`${hoy} entrega(s) para HOY`);
   if(manana>0) partes.push(`${manana} para MAÑANA`);
-  return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">⏰ Tienes ${partes.join(' y ')}. Revísalas antes de que se atrasen.</div>`;
+  return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">⏰ ${partes.join(' y ')}</div>`;
 }
+
 function renderOrdenes(){
   const sesion = window.__session || "";
   const sedeFilter = sesion || window.__sedeFilter || "";
@@ -608,7 +668,7 @@ function renderOrdenes(){
       <td>${verPapelera ? '<span class="badge done">Archivado</span>' : `<span class="badge ${alert.cls}">${alert.label}</span>`}</td>
       <td><button class="rowbtn" data-edit="${o.id}">${verPapelera?'Ver':'Editar'}</button></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="9" class="empty">${verPapelera ? 'La papelera está vacía.' : 'Sin órdenes con estos filtros.'}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">${verPapelera ? 'Papelera vacía.' : 'Sin órdenes.'}</td></tr>`;
 
   const procOptions = ['<option value="">Todos los procesos</option>', ...["Pendiente","Haciéndose","Terminado"].map(p=>`<option value="${p}" ${p===procFilter?'selected':''}>${p}</option>`)].join('');
   const sedeControl = sesion
@@ -622,11 +682,11 @@ function renderOrdenes(){
   return `
     ${verPapelera ? '' : renderRecordatorioBanner()}
     <div class="filters">
-      <input type="text" id="searchInput" placeholder="Buscar ticket, cliente o celular…" value="${window.__search||''}" style="min-width:220px;">
+      <input type="text" id="searchInput" placeholder="Buscar..." value="${window.__search||''}" style="min-width:220px;">
       ${sedeControl}
       <select id="procFilter">${procOptions}</select>
       <span style="flex:1;"></span>
-      <button class="btn ghost small" id="papeleraBtn" type="button">${verPapelera ? '⬅️ Volver a Órdenes' : `🗑️ Papelera (${archivadosCount})`}</button>
+      <button class="btn ghost small" id="papeleraBtn" type="button">${verPapelera ? '⬅️ Volver' : `🗑️ Papelera (${archivadosCount})`}</button>
       ${verPapelera ? '' : '<button class="btn gold" id="newOrderBtn">➕ Nueva orden</button>'}
     </div>
     <table class="orders">
@@ -634,8 +694,9 @@ function renderOrdenes(){
       <tbody>${rowsHtml}</tbody>
     </table>`;
 }
+
 function attachOrdenesEvents(){
-  document.getElementById('searchInput').addEventListener('input', e => { window.__search = e.target.value; render(); const i=document.getElementById('searchInput'); i.focus(); i.setSelectionRange(e.target.value.length,e.target.value.length); });
+  document.getElementById('searchInput').addEventListener('input', e => { window.__search = e.target.value; render(); });
   const sedeSel = document.getElementById('sedeFilter');
   if(sedeSel) sedeSel.addEventListener('change', e => { window.__sedeFilter = e.target.value; render(); });
   document.getElementById('procFilter').addEventListener('change', e => { window.__procFilter = e.target.value; render(); });
@@ -646,24 +707,21 @@ function attachOrdenesEvents(){
   document.querySelectorAll('tr[data-view]').forEach(tr => tr.addEventListener('click', () => openDetailModal(tr.dataset.view)));
 }
 
+// ============================================================
+// ÓRDENES - MODALES
+// ============================================================
 function renderPrendasRows(){
   document.getElementById('prendasList').innerHTML = draftPrendas.map((p, i) => `
     <div class="subrow">
       <div class="fields">
-        <label>Tipo de prenda <select data-pi="${i}" data-field="tipo">${(companyConfig.tiposPrenda||[]).map(t=>`<option ${t===p.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
-        <label>Tipo de servicio <select data-pi="${i}" data-field="servicio">${(companyConfig.tiposServicio||[]).map(t=>`<option ${t===p.servicio?'selected':''}>${t}</option>`).join('')}</select></label>
-        <label>Detalle (ej. "Subir basta 1 pulgada") <input type="text" data-pi="${i}" data-field="nota" value="${p.nota||''}"></label>
-        <label>Precio (MXN) <input type="number" data-pi="${i}" data-field="precio" value="${p.precio||0}" min="0"></label>
-        <label>Foto (cámara o galería) ${p.foto?`<img class="preview" src="${p.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">`:''}<input type="file" accept="image/*" capture="environment" data-pi="${i}" data-field="foto"></label>
-        <div class="btncol"><button class="btn danger small" data-removeprenda="${i}" type="button">✕</button></div>
+        <label>Tipo <select data-pi="${i}" data-field="tipo">${(companyConfig.tiposPrenda||[]).map(t=>`<option ${t===p.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
+        <label>Servicio <select data-pi="${i}" data-field="servicio">${(companyConfig.tiposServicio||[]).map(t=>`<option ${t===p.servicio?'selected':''}>${t}</option>`).join('')}</select></label>
+        <label>Detalle <input type="text" data-pi="${i}" data-field="nota" value="${p.nota||''}"></label>
+        <label>Precio <input type="number" data-pi="${i}" data-field="precio" value="${p.precio||0}" min="0"></label>
+        <label>Foto ${p.foto?`<img src="${p.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">`:''}<input type="file" accept="image/*" capture="environment" data-pi="${i}" data-field="foto"></label>
+        <button class="btn danger small" data-removeprenda="${i}" type="button">✕</button>
       </div>
-      <div class="loc">
-        📍 Ubicación actual: <b>${p.ubicacionActual || p.sedeOrigen}</b> (originada en ${p.sedeOrigen || '—'})
-        <select data-movesede="${i}">${sedeNames().map(s=>`<option ${s===(p.ubicacionActual||p.sedeOrigen)?'selected':''}>${s}</option>`).join('')}</select>
-        <button class="btn ghost small" data-move="${i}" type="button">Trasladar</button>
-        ${(p.movimientos&&p.movimientos.length) ? `<div class="histmini">${p.movimientos.map(m=>`${m.fecha}: ${m.deSede} → ${m.aSede}`).join(' · ')}</div>` : ''}
-      </div>
-    </div>`).join('') || `<div class="note">Sin prendas agregadas todavía.</div>`;
+    </div>`).join('') || `<div class="note">Sin prendas.</div>`;
 
   document.querySelectorAll('#prendasList select[data-field], #prendasList input[type=text]').forEach(el => {
     el.addEventListener('change', e => { draftPrendas[e.target.dataset.pi][e.target.dataset.field] = e.target.value; });
@@ -680,18 +738,8 @@ function renderPrendasRows(){
     });
   });
   document.querySelectorAll('[data-removeprenda]').forEach(b => b.addEventListener('click', () => { draftPrendas.splice(Number(b.dataset.removeprenda), 1); renderPrendasRows(); recomputeCostoTotal(); }));
-  document.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => {
-    const i = Number(b.dataset.move);
-    const aSede = document.querySelector(`[data-movesede="${i}"]`).value;
-    const p = draftPrendas[i];
-    const deSede = p.ubicacionActual || p.sedeOrigen;
-    if(aSede === deSede) return;
-    p.movimientos = p.movimientos || [];
-    p.movimientos.push({fecha: todayStr(), deSede, aSede});
-    p.ubicacionActual = aSede;
-    renderPrendasRows();
-  }));
 }
+
 function renderPagosRows(){
   document.getElementById('pagosList').innerHTML = draftPagos.map((p, i) => `
     <div class="subrow"><div class="fields" style="grid-template-columns:1fr 1fr 1fr auto;">
@@ -699,22 +747,24 @@ function renderPagosRows(){
       <label>Monto <input type="number" data-gi="${i}" data-field="monto" value="${p.monto}" min="0"></label>
       <label>Método <select data-gi="${i}" data-field="metodo">${METODOS.map(m=>`<option ${m===p.metodo?'selected':''}>${m}</option>`).join('')}</select></label>
       <button class="btn danger small" data-removepago="${i}" type="button">✕</button>
-    </div></div>`).join('') || `<div class="note">Sin pagos registrados todavía.</div>`;
+    </div></div>`).join('') || `<div class="note">Sin pagos.</div>`;
   document.querySelectorAll('#pagosList select, #pagosList input').forEach(el => {
     el.addEventListener('change', e => { const f = e.target.dataset.field; draftPagos[e.target.dataset.gi][f] = f === 'monto' ? Number(e.target.value) : e.target.value; updateSubtotal(); });
   });
   document.querySelectorAll('[data-removepago]').forEach(b => b.addEventListener('click', () => { draftPagos.splice(Number(b.dataset.removepago), 1); renderPagosRows(); updateSubtotal(); }));
   updateSubtotal();
 }
+
 function recomputeCostoTotal(){
   const costo = draftPrendas.reduce((s,p)=>s+Number(p.precio||0),0);
   const f = document.getElementById('f_costo'); if(f) f.value = costo;
   updateSubtotal();
 }
+
 function updateSubtotal(){
   const costo = Number(document.getElementById('f_costo')?.value || 0);
   const abonado = draftPagos.reduce((s,p)=>s+Number(p.monto||0),0);
-  document.getElementById('subtotalBox').textContent = `Costo total (suma de prendas): ${fmtMoney(costo)} · Abonado: ${fmtMoney(abonado)} · Saldo pendiente: ${fmtMoney(costo-abonado)}`;
+  document.getElementById('subtotalBox').textContent = `Costo: ${fmtMoney(costo)} · Abonado: ${fmtMoney(abonado)} · Saldo: ${fmtMoney(costo-abonado)}`;
 }
 
 function openOrderModal(id){
@@ -731,36 +781,35 @@ function openOrderModal(id){
   draftPagos = JSON.parse(JSON.stringify(o.pagos||[]));
 
   document.getElementById('modalBox').innerHTML = `
-    <h2>${id ? `Editar orden ${ticketLabel(o.ticket)}` : `Nueva orden (se generará ${ticketLabel(nextTicket)})`}</h2>
-    <div class="formgrid" id="formgrid">
-      <label>Fecha del registro <input type="date" id="f_fechaRecibido" value="${o.fechaRecibido}"></label>
-      <label>Nombre cliente <input type="text" id="f_cliente" value="${o.cliente}"></label>
+    <h2>${id ? `Editar ${ticketLabel(o.ticket)}` : `Nueva orden (${ticketLabel(nextTicket)})`}</h2>
+    <div class="formgrid">
+      <label>Registro <input type="date" id="f_fechaRecibido" value="${o.fechaRecibido}"></label>
+      <label>Cliente <input type="text" id="f_cliente" value="${o.cliente}"></label>
       <label>Celular <input type="tel" id="f_celular" value="${o.celular}"></label>
-      <label>Fecha de entrega <input type="date" id="f_fechaEntrega" value="${o.fechaEntrega}"></label>
-      <label>Sede <select id="f_sede" ${sesion?'disabled':''}>${sedeNames().map(s=>`<option ${s===o.sede?'selected':''}>${s}</option>`).join('')}</select></label>
+      <label>Entrega <input type="date" id="f_fechaEntrega" value="${o.fechaEntrega}"></label>
+      <label>Sede <select id="f_sede">${sedeNames().map(s=>`<option ${s===o.sede?'selected':''}>${s}</option>`).join('')}</select></label>
       <label>Encargado <select id="f_encargado"></select></label>
       <label>Proceso <select id="f_proceso">${["Pendiente","Haciéndose","Terminado"].map(p=>`<option ${p===o.proceso?'selected':''}>${p}</option>`).join('')}</select></label>
-      <label>Costo total del servicio (suma de prendas) <input type="number" id="f_costo" value="${o.costo}" min="0" readonly></label>
-      <label>Entregó (quién dio la prenda al cliente) <input type="text" id="f_entrego" value="${o.entrego}"></label>
+      <label>Costo total <input type="number" id="f_costo" value="${o.costo}" readonly></label>
+      <label>Entregó <input type="text" id="f_entrego" value="${o.entrego}"></label>
       <label class="full">Notas <input type="text" id="f_notas" value="${o.notas||''}"></label>
-      <div class="full" style="font-size:11.5px;color:var(--ink-soft);background:#FBF8F2;border:1px dashed var(--line);padding:8px 10px;border-radius:8px;">Dirección: <span id="f_direccion"></span></div>
     </div>
-    <h3>Prendas de este ticket</h3>
+    <h3>Prendas</h3>
     <div id="prendasList"></div>
     <button class="btn ghost small" id="addPrendaBtn" type="button">+ Agregar prenda</button>
-    <h3>Pagos / abonos de este ticket</h3>
+    <h3>Pagos</h3>
     <div id="pagosList"></div>
     <button class="btn ghost small" id="addPagoBtn" type="button">+ Agregar pago</button>
     <div class="subtotal" id="subtotalBox"></div>
     <div id="historyBox"></div>
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
-      <button class="btn gold" id="saveBtn" type="button">Guardar orden</button>
+      <button class="btn gold" id="saveBtn" type="button">Guardar</button>
     </div>`;
+  
   function fillEncargados(){
     const sede = document.getElementById('f_sede').value;
     document.getElementById('f_encargado').innerHTML = sedeInfo(sede).encargados.map(n=>`<option ${n===o.encargado?'selected':''}>${n}</option>`).join('');
-    document.getElementById('f_direccion').textContent = sedeInfo(sede).direccion;
   }
   fillEncargados();
   document.getElementById('f_sede').addEventListener('change', fillEncargados);
@@ -769,16 +818,15 @@ function openOrderModal(id){
   const hist = orders.filter(x => x.celular === o.celular && x.id !== id);
   const historyBox = document.getElementById('historyBox');
   if(o.celular && hist.length){
-    const totalGastado = hist.reduce((s,x)=>s+Number(x.costo),0) + Number(o.costo||0);
-    historyBox.innerHTML = `<div class="historybox"><b>Historial del cliente</b> (${o.celular}) — ${hist.length} orden(es) anterior(es), ${fmtMoney(totalGastado)} gastado en total.
-      <ul>${hist.slice(0,5).map(x=>`<li>${ticketLabel(x.ticket)} — ${new Date(x.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')} — ${(x.prendas||[]).map(p=>p.tipo).join(", ")||"—"} — ${fmtMoney(x.costo)}</li>`).join('')}</ul></div>`;
-  } else { historyBox.innerHTML = ""; }
+    historyBox.innerHTML = `<div class="historybox"><b>Historial</b> (${o.celular}) — ${hist.length} orden(es)
+      <ul>${hist.slice(0,5).map(x=>`<li>${ticketLabel(x.ticket)} — ${fmtMoney(x.costo)}</li>`).join('')}</ul></div>`;
+  }
 
   document.getElementById('cancelBtn').addEventListener('click', () => {
-    if(confirm('¿Cerrar sin guardar los cambios de esta orden?')) document.getElementById('overlay').classList.remove('show');
+    if(confirm('¿Cerrar sin guardar?')) document.getElementById('overlay').classList.remove('show');
   });
   document.getElementById('addPrendaBtn').addEventListener('click', () => {
-    draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", nota:"", precio:0, foto:"", sedeOrigen:document.getElementById('f_sede').value, ubicacionActual:document.getElementById('f_sede').value, movimientos:[]});
+    draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", nota:"", precio:0, foto:""});
     renderPrendasRows(); recomputeCostoTotal();
   });
   document.getElementById('addPagoBtn').addEventListener('click', () => { draftPagos.push({fecha: todayStr(), monto:0, metodo:METODOS[0]}); renderPagosRows(); });
@@ -822,20 +870,21 @@ async function saveOrderFromModal(){
 }
 
 function receiptLinesHtml(o){
-  return (o.prendas||[]).map(p => `<div class="rline"><span>${p.tipo} - ${p.servicio}${p.nota?` - ${p.nota}`:''}</span><span>${fmtMoney(p.precio||0)}</span></div>`).join('') || '<div class="rline"><span>(sin prendas registradas)</span><span></span></div>';
+  return (o.prendas||[]).map(p => `<div class="rline"><span>${p.tipo} - ${p.servicio}${p.nota?` - ${p.nota}`:''}</span><span>${fmtMoney(p.precio||0)}</span></div>`).join('') || '<div class="rline"><span>(sin prendas)</span><span></span></div>';
 }
+
 function openDetailModal(id){
   const o = orders.find(x=>x.id===id); if(!o) return;
   const alert = computeAlert(o);
   document.getElementById('modalBox').innerHTML = `
-    <h2>Detalle del ticket ${ticketLabel(o.ticket)} <span class="badge ${alert.cls}" style="margin-left:8px;">${alert.label}</span></h2>
+    <h2>Detalle ${ticketLabel(o.ticket)} <span class="badge ${alert.cls}">${alert.label}</span></h2>
     <div class="receipt">
       <div class="rtitle">${companyConfig.nombreEmpresa}</div>
       <div class="rsmall">${sedeInfo(o.sede).direccion || o.sede}</div>
       <div class="rdiv"></div>
       <div class="rline"><span>Ticket</span><span>${ticketLabel(o.ticket)}</span></div>
-      <div class="rline"><span>Fecha del registro</span><span>${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
-      <div class="rline"><span>Fecha de entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
+      <div class="rline"><span>Registro</span><span>${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
+      <div class="rline"><span>Entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
       <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
       <div class="rline"><span>Celular</span><span>${o.celular}</span></div>
       <div class="rline"><span>Sede / Encargado</span><span>${o.sede} / ${o.encargado}</span></div>
@@ -843,86 +892,45 @@ function openDetailModal(id){
       <div class="rdiv"></div>${receiptLinesHtml(o)}<div class="rdiv"></div>
       <div class="rline"><b>Costo total</b><b>${fmtMoney(o.costo)}</b></div>
       <div class="rline"><span>Abonado</span><span>${fmtMoney(totalAbonado(o))}</span></div>
-      <div class="rline"><b>Saldo pendiente</b><b>${fmtMoney(saldo(o))}</b></div>
-      ${o.notas ? `<div class="rdiv"></div><div class="rline"><span>Notas</span><span>${o.notas}</span></div>` : ''}
+      <div class="rline"><b>Saldo</b><b>${fmtMoney(saldo(o))}</b></div>
+      ${o.notas ? `<div class="rline"><span>Notas</span><span>${o.notas}</span></div>` : ''}
     </div>
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cerrar</button>
-      <button class="btn ghost" id="printClienteBtn" type="button">🖨️ Ticket cliente</button>
-      <button class="btn ghost" id="printSastreriaBtn" type="button">🖨️ Copia sastrería</button>
-      ${o.eliminado
-        ? `<button class="btn" id="restoreBtn" type="button" style="background:var(--green);">♻️ Restaurar ticket</button>`
-        : `<button class="btn" id="archiveBtn" type="button" style="background:var(--red);">🗑️ Archivar ticket</button>`}
+      <button class="btn ghost" id="printClienteBtn" type="button">🖨️ Ticket</button>
       <button class="btn gold" id="editFromDetailBtn" type="button">Editar</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('editFromDetailBtn').addEventListener('click', () => openOrderModal(o.id));
   document.getElementById('printClienteBtn').addEventListener('click', () => printTicket(o, 'cliente'));
-  document.getElementById('printSastreriaBtn').addEventListener('click', () => printTicket(o, 'sastreria'));
-  const archBtn = document.getElementById('archiveBtn');
-  if(archBtn) archBtn.addEventListener('click', () => toggleArchiveOrder(o, true));
-  const restBtn = document.getElementById('restoreBtn');
-  if(restBtn) restBtn.addEventListener('click', () => toggleArchiveOrder(o, false));
   document.getElementById('overlay').classList.add('show');
 }
-async function toggleArchiveOrder(o, archivar){
-  const msg = archivar ? `¿Archivar el ticket ${ticketLabel(o.ticket)}? Ya no aparecerá en la lista principal, pero puedes restaurarlo desde la Papelera.` : `¿Restaurar el ticket ${ticketLabel(o.ticket)}?`;
-  if(!confirm(msg)) return;
-  const updated = {...o, eliminado: archivar};
-  await saveOrderDoc(updated);
-  const idx = orders.findIndex(x=>x.id===o.id); orders[idx] = updated;
-  await logAudit(archivar ? 'Archivar ticket' : 'Restaurar ticket', `${ticketLabel(o.ticket)} — ${o.cliente}`);
-  document.getElementById('overlay').classList.remove('show');
-  render();
-}
+
 function printTicket(o, tipo){
   const area = document.getElementById('printArea');
-  const abonos = (o.pagos||[]).map(p=>`<div class="rline"><span>${new Date(p.fecha+"T00:00:00").toLocaleDateString('es-MX')} (${p.metodo})</span><span>${fmtMoney(p.monto)}</span></div>`).join('');
-  if(tipo === 'cliente'){
-    area.innerHTML = `<div class="receipt" style="border:none;background:#fff;padding:0;">
-      <div class="rtitle">${companyConfig.nombreEmpresa}</div>
-      <div class="rsmall">${sedeInfo(o.sede).direccion || o.sede}</div>
-      <div class="rsmall">Tel. sede / WhatsApp: ______________</div>
-      <div class="rdiv"></div>
-      <div class="rline"><b>TICKET</b><b>${ticketLabel(o.ticket)}</b></div>
-      <div class="rline"><span>Registro</span><span>${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
-      <div class="rline"><span>Entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
-      <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
-      <div class="rline"><span>Celular</span><span>${o.celular}</span></div>
-      <div class="rdiv"></div>${receiptLinesHtml(o)}<div class="rdiv"></div>
-      <div class="rline"><b>TOTAL</b><b>${fmtMoney(o.costo)}</b></div>${abonos}
-      <div class="rline"><b>SALDO PENDIENTE</b><b>${fmtMoney(saldo(o))}</b></div>
-      <div class="rdiv"></div>
-      <div class="rsmall">Presente este ticket para recoger su(s) prenda(s).</div>
-      <div class="rsmall">¡Gracias por su preferencia!</div>
-      <div class="rlegal">${LEGAL_TEXT}</div>
-    </div>`;
-  } else {
-    area.innerHTML = `<div class="receipt" style="border:none;background:#fff;padding:0;">
-      <div class="rtitle">COPIA SASTRERÍA</div>
-      <div class="rsmall">Conservar en tienda — NO entregar al cliente</div>
-      <div class="rdiv"></div>
-      <div class="rline"><b>TICKET</b><b>${ticketLabel(o.ticket)}</b></div>
-      <div class="rline"><span>Sede</span><span>${o.sede}</span></div>
-      <div class="rline"><span>Encargado</span><span>${o.encargado}</span></div>
-      <div class="rline"><span>Registro</span><span>${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
-      <div class="rline"><b>ENTREGA</b><b>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</b></div>
-      <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
-      <div class="rline"><span>Celular</span><span>${o.celular}</span></div>
-      <div class="rdiv"></div>
-      <div class="rsmall" style="text-align:left;"><b>Trabajo a realizar:</b></div>
-      ${(o.prendas||[]).map(p=>`<div class="rline" style="align-items:flex-start;"><span><span class="rcheck"></span><b>${p.tipo}</b> — ${p.servicio}${p.nota?`<br>&nbsp;&nbsp;&nbsp;${p.nota}`:''}</span><span>${fmtMoney(p.precio||0)}</span></div>`).join('')}
-      <div class="rdiv"></div>
-      <div class="rline"><b>TOTAL</b><b>${fmtMoney(o.costo)}</b></div>
-      <div class="rline"><b>SALDO</b><b>${fmtMoney(saldo(o))}</b></div>
-      ${o.notas ? `<div class="rline"><span>Notas</span><span>${o.notas}</span></div>` : ''}
-      <div class="rline"><span><span class="rcheck"></span>Revisado antes de entregar</span><span></span></div>
-      <div class="rdiv"></div>
-      ${(o.prendas||[]).map(p => `<div class="rcut">✂️ - - - - - - - - - - - - - - - - - - - -</div>
-        <div class="rtag"><div class="tnum">${ticketLabel(o.ticket)}</div><div>${p.tipo} — ${p.servicio}</div>${p.nota?`<div class="rsmall">${p.nota}</div>`:''}<div class="rsmall">${o.cliente}</div></div>`).join('')}
-    </div>`;
-  }
+  area.innerHTML = `<div class="receipt" style="border:none;background:#fff;padding:0;">
+    <div class="rtitle">${companyConfig.nombreEmpresa}</div>
+    <div class="rsmall">${sedeInfo(o.sede).direccion || o.sede}</div>
+    <div class="rdiv"></div>
+    <div class="rline"><b>TICKET</b><b>${ticketLabel(o.ticket)}</b></div>
+    <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
+    <div class="rline"><span>Entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
+    <div class="rdiv"></div>${receiptLinesHtml(o)}<div class="rdiv"></div>
+    <div class="rline"><b>TOTAL</b><b>${fmtMoney(o.costo)}</b></div>
+    <div class="rline"><b>SALDO</b><b>${fmtMoney(saldo(o))}</b></div>
+    <div class="rlegal">${LEGAL_TEXT}</div>
+  </div>`;
   window.print();
+}
+
+function toggleArchiveOrder(o, archivar){
+  const msg = archivar ? `¿Archivar ${ticketLabel(o.ticket)}?` : `¿Restaurar ${ticketLabel(o.ticket)}?`;
+  if(!confirm(msg)) return;
+  const updated = {...o, eliminado: archivar};
+  saveOrderDoc(updated).then(() => {
+    const idx = orders.findIndex(x=>x.id===o.id); orders[idx] = updated;
+    render();
+  });
 }
 
 // ============================================================
@@ -938,48 +946,46 @@ function renderInventario(){
     return `<tr class="${stockBajo?'overdue':''}">
       <td>${new Date(x.fecha+"T00:00:00").toLocaleDateString('es-MX')}</td>
       <td>${x.sede}</td><td>${x.tipo}</td><td>${x.descripcion}</td>
-      <td>${x.cantidad} ${x.unidad} (compra)</td>
+      <td>${x.cantidad} ${x.unidad}</td>
       <td>${x.existenciaActual!==undefined ? `${x.existenciaActual} ${x.unidad}${stockBajo?' ⚠️':''}` : '—'}</td>
-      <td>${x.proveedor||'—'}</td><td>${x.solicitadoPor||'—'}</td><td>${x.costo?fmtMoney(x.costo):'—'}</td>
+      <td>${x.proveedor||'—'}</td>
       <td><button class="rowbtn" data-editinv="${x.id}">Editar</button></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="9" class="empty">Sin materiales registrados con estos filtros.</td></tr>`;
-  const sedeOptions = ['<option value="">Todas las sucursales</option>', ...sedeNames().map(s=>`<option value="${s}" ${s===sedeFilter?'selected':''}>${s}</option>`)].join('');
-  const tipoOptions = ['<option value="">Todos los tipos</option>', ...(companyConfig.tiposInventario||[]).map(t=>`<option value="${t}" ${t===tipoFilter?'selected':''}>${t}</option>`)].join('');
+  }).join('') || `<tr><td colspan="8" class="empty">Sin materiales.</td></tr>`;
+  const sedeOptions = ['<option value="">Todas</option>', ...sedeNames().map(s=>`<option value="${s}" ${s===sedeFilter?'selected':''}>${s}</option>`)].join('');
+  const tipoOptions = ['<option value="">Todos</option>', ...(companyConfig.tiposInventario||[]).map(t=>`<option value="${t}" ${t===tipoFilter?'selected':''}>${t}</option>`)].join('');
   return `
-    <div class="note">Registra qué material se compró o solicitó para cada sucursal — con proveedor y quién lo pidió. "Existencia actual" la actualizas tú; si baja del "Stock mínimo" se marca con ⚠️.</div>
-    ${bajos.length ? `<div class="note" style="background:var(--red-bg);border-color:var(--red);color:var(--red);">⚠️ ${bajos.length} material(es) por debajo del stock mínimo: ${bajos.map(b=>`${b.descripcion} (${b.sede})`).join(', ')}</div>` : ''}
+    ${bajos.length ? `<div class="note" style="background:var(--red-bg);border-color:var(--red);color:var(--red);">⚠️ ${bajos.length} material(es) por debajo del stock mínimo</div>` : ''}
     <div class="filters">
       <select id="invSede">${sedeOptions}</select>
       <select id="invTipo">${tipoOptions}</select>
       <span style="flex:1;"></span>
       <button class="btn gold" id="newInvBtn">➕ Nuevo material</button>
     </div>
-    <table class="orders"><thead><tr><th>Fecha</th><th>Sede</th><th>Tipo</th><th>Descripción</th><th>Última compra</th><th>Existencia actual</th><th>Proveedor</th><th>Solicitó</th><th>Costo</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    <table class="orders"><thead><tr><th>Fecha</th><th>Sede</th><th>Tipo</th><th>Descripción</th><th>Cantidad</th><th>Existencia</th><th>Proveedor</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
 }
+
 function attachInventarioEvents(){
   document.getElementById('invSede').addEventListener('change', e => { window.__invSede = e.target.value; render(); });
   document.getElementById('invTipo').addEventListener('change', e => { window.__invTipo = e.target.value; render(); });
   document.getElementById('newInvBtn').addEventListener('click', () => openInventoryModal(null));
   document.querySelectorAll('[data-editinv]').forEach(b => b.addEventListener('click', () => openInventoryModal(b.dataset.editinv)));
 }
+
 function openInventoryModal(id){
-  const it = id ? inventory.find(x=>x.id===id) : { fecha: todayStr(), sede:sedeNames()[0]||"", tipo:(companyConfig.tiposInventario||[])[0]||"", descripcion:"", cantidad:0, unidad:UNIDADES[0], proveedor:"", solicitadoPor:"", costo:0, notas:"", existenciaActual:0, stockMinimo:0 };
+  const it = id ? inventory.find(x=>x.id===id) : { fecha: todayStr(), sede:sedeNames()[0]||"", tipo:(companyConfig.tiposInventario||[])[0]||"", descripcion:"", cantidad:0, unidad:UNIDADES[0], proveedor:"", costo:0, existenciaActual:0, stockMinimo:0 };
   document.getElementById('modalBox').innerHTML = `
     <h2>${id ? 'Editar material' : 'Nuevo material'}</h2>
     <div class="formgrid">
       <label>Fecha <input type="date" id="i_fecha" value="${it.fecha}"></label>
       <label>Sede <select id="i_sede">${sedeNames().map(s=>`<option ${s===it.sede?'selected':''}>${s}</option>`).join('')}</select></label>
-      <label>Tipo de material <select id="i_tipo">${(companyConfig.tiposInventario||[]).map(t=>`<option ${t===it.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
+      <label>Tipo <select id="i_tipo">${(companyConfig.tiposInventario||[]).map(t=>`<option ${t===it.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
       <label>Descripción <input type="text" id="i_descripcion" value="${it.descripcion}"></label>
-      <label>Cantidad comprada en este registro <input type="number" id="i_cantidad" value="${it.cantidad}" min="0"></label>
+      <label>Cantidad <input type="number" id="i_cantidad" value="${it.cantidad}" min="0"></label>
       <label>Unidad <select id="i_unidad">${UNIDADES.map(u=>`<option ${u===it.unidad?'selected':''}>${u}</option>`).join('')}</select></label>
       <label>Proveedor <input type="text" id="i_proveedor" value="${it.proveedor||''}"></label>
-      <label>Solicitado por <input type="text" id="i_solicitadoPor" value="${it.solicitadoPor||''}"></label>
-      <label>Costo total ($) <input type="number" id="i_costo" value="${it.costo||0}" min="0"></label>
       <label>Existencia actual <input type="number" id="i_existenciaActual" value="${it.existenciaActual||0}" min="0"></label>
-      <label>Stock mínimo deseado <input type="number" id="i_stockMinimo" value="${it.stockMinimo||0}" min="0"></label>
-      <label class="full">Notas <input type="text" id="i_notas" value="${it.notas||''}"></label>
+      <label>Stock mínimo <input type="number" id="i_stockMinimo" value="${it.stockMinimo||0}" min="0"></label>
     </div>
     <div class="formfoot"><button class="btn ghost" id="cancelBtn" type="button">Cancelar</button><button class="btn gold" id="saveInvBtn" type="button">Guardar</button></div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
@@ -988,9 +994,9 @@ function openInventoryModal(id){
       fecha: document.getElementById('i_fecha').value, sede: document.getElementById('i_sede').value,
       tipo: document.getElementById('i_tipo').value, descripcion: document.getElementById('i_descripcion').value.trim(),
       cantidad: Number(document.getElementById('i_cantidad').value), unidad: document.getElementById('i_unidad').value,
-      proveedor: document.getElementById('i_proveedor').value.trim(), solicitadoPor: document.getElementById('i_solicitadoPor').value.trim(),
-      costo: Number(document.getElementById('i_costo').value), notas: document.getElementById('i_notas').value.trim(),
-      existenciaActual: Number(document.getElementById('i_existenciaActual').value), stockMinimo: Number(document.getElementById('i_stockMinimo').value),
+      proveedor: document.getElementById('i_proveedor').value.trim(),
+      existenciaActual: Number(document.getElementById('i_existenciaActual').value),
+      stockMinimo: Number(document.getElementById('i_stockMinimo').value),
     };
     if(!data.descripcion){ alert("La descripción es obligatoria."); return; }
     if(id){ const merged = {...it, ...data, id}; await saveInventoryDoc(merged); const idx = inventory.findIndex(x=>x.id===id); inventory[idx] = merged; }
@@ -1012,35 +1018,37 @@ function renderMedidas(){
     <td>${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}cm`).join(' · ')}</td>
     <td>${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
     <td><button class="rowbtn" data-editmeas="${m.id}">Editar</button></td>
-  </tr>`).join('') || `<tr><td colspan="5" class="empty">Sin medidas registradas.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="5" class="empty">Sin medidas.</td></tr>`;
   return `
-    <div class="note">Guarda las medidas para sacos, abrigos, chalecos, camisas y pantalones. Edítalas cuando el cliente suba o baje de peso.</div>
-    <div class="filters"><input type="text" id="measSearch" placeholder="Buscar cliente o celular…" value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
+    <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
     <table class="orders"><thead><tr><th>Cliente</th><th>Prenda</th><th>Medidas (cm)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
 }
+
 function attachMedidasEvents(){
-  document.getElementById('measSearch').addEventListener('input', e => { window.__measSearch = e.target.value; render(); const i=document.getElementById('measSearch'); i.focus(); i.setSelectionRange(e.target.value.length,e.target.value.length); });
+  document.getElementById('measSearch').addEventListener('input', e => { window.__measSearch = e.target.value; render(); });
   document.getElementById('newMeasBtn').addEventListener('click', () => openMeasureModal(null));
   document.querySelectorAll('[data-editmeas]').forEach(b => b.addEventListener('click', () => openMeasureModal(b.dataset.editmeas)));
 }
+
 function renderMeasureFields(tipo, medidas){
   return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (cm) <input type="number" class="measfield" data-campo="${campo}" value="${medidas[campo]??''}" min="0"></label>`).join('');
 }
+
 function openMeasureModal(id){
   editingMeasureId = id;
   const m = id ? measurements.find(x=>x.id===id) : { cliente:"", celular:"", tipo:"Saco", medidas:{}, notas:"", historial:[] };
   document.getElementById('modalBox').innerHTML = `
     <h2>${id ? 'Editar medidas' : 'Nuevas medidas'}</h2>
     <div class="formgrid">
-      <label>Nombre cliente <input type="text" id="m_cliente" value="${m.cliente}"></label>
+      <label>Cliente <input type="text" id="m_cliente" value="${m.cliente}"></label>
       <label>Celular <input type="tel" id="m_celular" value="${m.celular}"></label>
-      <label>Tipo de prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
+      <label>Prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
       <label class="full">Notas <input type="text" id="m_notas" value="${m.notas||''}"></label>
     </div>
     <h3>Medidas (cm)</h3>
     <div class="measure-layout"><div class="measure-fields" id="measureFields"></div><div class="measure-diagram" id="measureDiagram"></div></div>
-    ${(m.historial&&m.historial.length) ? `<div class="historybox" style="margin-top:16px;"><b>Historial de medidas anteriores</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}cm`).join(', ')}</li>`).join('')}</ul></div>` : ''}
-    <div class="formfoot"><button class="btn ghost" id="cancelBtn" type="button">Cancelar</button><button class="btn gold" id="saveMeasBtn" type="button">Guardar medidas</button></div>`;
+    ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}cm`).join(', ')}</li>`).join('')}</ul></div>` : ''}
+    <div class="formfoot"><button class="btn ghost" id="cancelBtn" type="button">Cancelar</button><button class="btn gold" id="saveMeasBtn" type="button">Guardar</button></div>`;
   function fillFields(){
     document.getElementById('measureFields').innerHTML = renderMeasureFields(document.getElementById('m_tipo').value, m.medidas);
     document.getElementById('measureDiagram').innerHTML = MEDIDAS_DIAGRAMS[document.getElementById('m_tipo').value] || '';
@@ -1073,7 +1081,7 @@ function openMeasureModal(id){
 }
 
 // ============================================================
-// COMISIONES (gateado con el PIN del dueño, definido en Configuración)
+// COMISIONES
 // ============================================================
 function renderComisiones(){
   const mesActual = todayStr().slice(0,7);
@@ -1095,12 +1103,13 @@ function renderComisiones(){
     return s + total*pct/100;
   },0);
   return `
-    <div class="note">Mes mostrado: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}. Se calcula sobre el costo total del ticket.</div>
-    <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total cobrado (mes)</th><th>% Comisión</th><th>Comisión a pagar</th></tr></thead>
-      <tbody>${rows || '<tr><td colspan="5" class="empty">Agrega encargados a tus sucursales en Configuración.</td></tr>'}</tbody>
-      <tfoot><tr style="font-weight:700;background:#FBF8F2;"><td colspan="4" style="padding:10px 12px;">Total a pagar</td><td style="padding:10px 12px;">${fmtMoney(totalGeneral)}</td></tr></tfoot>
+    <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}</div>
+    <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total</th><th>%</th><th>Comisión</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" class="empty">Sin encargados.</td></tr>'}</tbody>
+      <tfoot><tr style="font-weight:700;"><td colspan="4">Total</td><td>${fmtMoney(totalGeneral)}</td></tr></tfoot>
     </table>`;
 }
+
 function attachComisionesEvents(){
   document.querySelectorAll('.pctinput').forEach(inp => {
     inp.addEventListener('change', async e => {
@@ -1113,63 +1122,44 @@ function attachComisionesEvents(){
 }
 
 // ============================================================
-// CONFIGURACIÓN (editar empresa, sucursales, tipos, PIN — después del onboarding)
+// CONFIGURACIÓN
 // ============================================================
 let draftSedes = [];
+
 function renderConfig(){
   draftSedes = JSON.parse(JSON.stringify(companyConfig.sedes||[]));
   return `
     <div class="formgrid">
-      <label class="full">Nombre de tu empresa <input type="text" id="cfg_nombre" value="${companyConfig.nombreEmpresa}"></label>
+      <label class="full">Nombre empresa <input type="text" id="cfg_nombre" value="${companyConfig.nombreEmpresa}"></label>
     </div>
-    <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);margin-top:22px;">Sucursales</h3>
+    <h3>Sucursales</h3>
     <div id="cfgSedesList"></div>
     <button class="btn ghost small" id="cfgAddSede" type="button">+ Agregar sucursal</button>
-
-    <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de prenda (uno por línea)</h3>
-    <textarea id="cfg_tiposPrenda" rows="5" style="width:100%;padding:8px;">${(companyConfig.tiposPrenda||[]).join('\n')}</textarea>
-
-    <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de servicio (uno por línea)</h3>
-    <textarea id="cfg_tiposServicio" rows="5" style="width:100%;padding:8px;">${(companyConfig.tiposServicio||[]).join('\n')}</textarea>
-
-    <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de material / inventario (uno por línea)</h3>
-    <textarea id="cfg_tiposInventario" rows="4" style="width:100%;padding:8px;">${(companyConfig.tiposInventario||[]).join('\n')}</textarea>
-
-    <div class="note" style="margin-top:16px;">Cambiar el nombre de una sucursal no actualiza las órdenes ya guardadas con el nombre anterior — evita renombrar sucursales que ya tengan tickets.</div>
-    <div class="formfoot"><button class="btn gold" id="cfgSaveBtn" type="button">Guardar cambios</button></div>
-
-    <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);margin-top:32px;border-top:1px dashed var(--line);padding-top:20px;">🔒 Zona del dueño</h3>
-    <div id="ownerZoneConfig"></div>`;
-}
-function renderOwnerZoneConfig(){
-  const box = document.getElementById('ownerZoneConfig');
-  if(!box) return;
-  box.innerHTML = `
-    <div class="formgrid">
-      <label>PIN del dueño (para Comisiones) <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" style="max-width:160px;"></label>
+    <h3>Tipos de prenda</h3>
+    <textarea id="cfg_tiposPrenda" rows="4" style="width:100%;padding:8px;">${(companyConfig.tiposPrenda||[]).join('\n')}</textarea>
+    <h3>Tipos de servicio</h3>
+    <textarea id="cfg_tiposServicio" rows="4" style="width:100%;padding:8px;">${(companyConfig.tiposServicio||[]).join('\n')}</textarea>
+    <h3>Tipos de inventario</h3>
+    <textarea id="cfg_tiposInventario" rows="3" style="width:100%;padding:8px;">${(companyConfig.tiposInventario||[]).join('\n')}</textarea>
+    <div class="formfoot"><button class="btn gold" id="cfgSaveBtn" type="button">Guardar</button></div>
+    <h3 style="margin-top:30px;">🔒 PIN del dueño</h3>
+    <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" style="max-width:160px;">
+    <button class="btn ghost small" id="cfgSavePinBtn" type="button" style="margin-top:10px;">Guardar PIN</button>
+    <div class="note" style="margin-top:20px;border-color:var(--red);background:var(--red-bg);color:var(--red);">
+      <b>⚠️ Zona de peligro</b> - Esto borra TODOS tus datos permanentemente.
     </div>
-    <div class="formfoot" style="justify-content:flex-start;"><button class="btn ghost small" id="cfgSavePinBtn" type="button">Guardar PIN</button></div>
-    <div class="note" style="margin-top:16px;border-color:var(--red);background:var(--red-bg);color:var(--red);">
-      <b>Zona de peligro</b><br>Esto borra tu empresa y TODOS sus datos (órdenes, inventario, medidas, comisiones) de forma permanente. No se puede deshacer.
-    </div>
-    <button class="btn" id="deleteAccountBtn" type="button" style="margin-top:8px;background:var(--red);">🗑️ Eliminar mi cuenta y todos mis datos</button>`;
-  document.getElementById('cfgSavePinBtn').addEventListener('click', async () => {
-    const ownerPin = document.getElementById('cfg_pin').value.trim() || "0000";
-    await saveCompanyConfig({ownerPin});
-    await logAudit('Cambiar PIN del dueño', '');
-    alert("PIN actualizado.");
-  });
-  document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
+    <button class="btn" id="deleteAccountBtn" type="button" style="background:var(--red);">🗑️ Eliminar cuenta y datos</button>`;
 }
+
 function renderCfgSedes(){
   document.getElementById('cfgSedesList').innerHTML = draftSedes.map((s,i)=>`
     <div class="sedecard">
       <div class="fields">
-        <label>Nombre sucursal <input type="text" data-si="${i}" data-f="nombre" value="${s.nombre}"></label>
+        <label>Nombre <input type="text" data-si="${i}" data-f="nombre" value="${s.nombre}"></label>
         <label>Dirección <input type="text" data-si="${i}" data-f="direccion" value="${s.direccion}"></label>
         <button class="btn danger small" type="button" data-removesede="${i}">✕</button>
       </div>
-      <label>Encargados (uno por línea) <textarea rows="2" data-si="${i}" data-f="encargados" style="width:100%;">${(s.encargados||[]).join('\n')}</textarea></label>
+      <label>Encargados <textarea rows="2" data-si="${i}" data-f="encargados" style="width:100%;">${(s.encargados||[]).join('\n')}</textarea></label>
     </div>`).join('');
   document.querySelectorAll('#cfgSedesList [data-f]').forEach(el=>{
     el.addEventListener('change', e=>{
@@ -1183,15 +1173,15 @@ function renderCfgSedes(){
     const nombreSede = draftSedes[i].nombre;
     const activos = orders.filter(o => o.sede === nombreSede && o.proceso !== "Terminado" && !o.eliminado).length;
     if(activos > 0){
-      alert(`No puedes quitar "${nombreSede}" — tiene ${activos} orden(es) activa(s) (no Terminadas). Termínalas o cámbialas de sede primero.`);
+      alert(`No puedes quitar "${nombreSede}" — tiene ${activos} orden(es) activa(s).`);
       return;
     }
     draftSedes.splice(i,1); renderCfgSedes();
   }));
 }
+
 function attachConfigEvents(){
   renderCfgSedes();
-  renderOwnerZoneConfig();
   document.getElementById('cfgAddSede').addEventListener('click', ()=>{ draftSedes.push({nombre:'',direccion:'',encargados:['']}); renderCfgSedes(); });
   document.getElementById('cfgSaveBtn').addEventListener('click', async () => {
     const nombreEmpresa = document.getElementById('cfg_nombre').value.trim();
@@ -1199,63 +1189,66 @@ function attachConfigEvents(){
     const tiposServicio = document.getElementById('cfg_tiposServicio').value.split('\n').map(x=>x.trim()).filter(Boolean);
     const tiposInventario = document.getElementById('cfg_tiposInventario').value.split('\n').map(x=>x.trim()).filter(Boolean);
     const sedes = draftSedes.filter(s=>s.nombre.trim()).map(s=>({...s, encargados:(s.encargados||[]).filter(Boolean)}));
-    if(!nombreEmpresa || sedes.length===0){ alert("Necesitas un nombre de empresa y al menos una sucursal."); return; }
+    if(!nombreEmpresa || sedes.length===0){ alert("Nombre y al menos una sucursal."); return; }
     await saveCompanyConfig({nombreEmpresa, tiposPrenda, tiposServicio, tiposInventario, sedes});
-    await logAudit('Actualizar configuración', `Empresa: ${nombreEmpresa}, ${sedes.length} sucursal(es)`);
     renderRoot();
   });
+  document.getElementById('cfgSavePinBtn').addEventListener('click', async () => {
+    const ownerPin = document.getElementById('cfg_pin').value.trim() || "0000";
+    await saveCompanyConfig({ownerPin});
+    alert("PIN actualizado.");
+  });
+  document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
 }
 
 // ============================================================
-// ELIMINAR CUENTA (borra todos los datos de Firestore + el login)
+// ELIMINAR CUENTA
 // ============================================================
 async function deleteAllCompanyData(){
-  const collections = ['orders','inventory','measurements'];
+  const collections = ['orders','inventory','measurements','auditlog'];
   for(const col of collections){
-    const snap = await db.collection('companies').doc(companyId).collection(col).get();
-    await Promise.all(snap.docs.map(d => d.ref.delete()));
+    try {
+      const snap = await db.collection('companies').doc(companyId).collection(col).get();
+      await Promise.all(snap.docs.map(d => d.ref.delete()));
+    } catch(e) { console.error('Error eliminando:', col, e); }
   }
   await db.collection('companies').doc(companyId).delete();
 }
+
 function openDeleteAccountModal(){
   document.getElementById('modalBox').innerHTML = `
-    <h2 style="color:var(--red);">⚠️ Eliminar cuenta y todos los datos</h2>
-    <p style="color:var(--ink-soft);font-size:13px;">Esto borra permanentemente tu empresa, todas las órdenes, inventario, medidas y comisiones. <b>No se puede deshacer.</b></p>
+    <h2 style="color:var(--red);">⚠️ Eliminar cuenta</h2>
+    <p>Esto borra TODOS los datos permanentemente.</p>
     <div class="formgrid">
-      <label class="full">Escribe tu contraseña para confirmar <input type="password" id="del_password"></label>
-      <label class="full">Escribe ELIMINAR para confirmar <input type="text" id="del_confirm"></label>
+      <label class="full">Contraseña <input type="password" id="del_password"></label>
+      <label class="full">Escribe ELIMINAR <input type="text" id="del_confirm"></label>
     </div>
     <div class="autherror" id="delError"></div>
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
-      <button class="btn" id="confirmDeleteBtn" type="button" style="background:var(--red);color:#fff;">Eliminar todo permanentemente</button>
+      <button class="btn" id="confirmDeleteBtn" type="button" style="background:var(--red);color:#fff;">Eliminar todo</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
     const pass = document.getElementById('del_password').value;
     const confirmText = document.getElementById('del_confirm').value.trim();
     const errEl = document.getElementById('delError');
-    errEl.textContent = '';
-    if(confirmText !== 'ELIMINAR'){ errEl.textContent = 'Escribe exactamente ELIMINAR (mayúsculas) para confirmar.'; return; }
+    if(confirmText !== 'ELIMINAR'){ errEl.textContent = 'Escribe ELIMINAR'; return; }
     if(!pass){ errEl.textContent = 'Escribe tu contraseña.'; return; }
-    const btn = document.getElementById('confirmDeleteBtn');
-    btn.textContent = 'Eliminando...'; btn.disabled = true;
     try{
       const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, pass);
       await currentUser.reauthenticateWithCredential(credential);
       await deleteAllCompanyData();
       await currentUser.delete();
-      // auth.onAuthStateChanged se encarga de regresar a la pantalla de login
     }catch(e){
       errEl.textContent = traducirErrorFirebase(e);
-      btn.textContent = 'Eliminar todo permanentemente'; btn.disabled = false;
     }
   });
   document.getElementById('overlay').classList.add('show');
 }
 
 // ============================================================
-// INICIO: escucha el estado de autenticación de Firebase
+// AUTHENTICACIÓN Y PWA
 // ============================================================
 auth.onAuthStateChanged(async user => {
   if(user){
@@ -1272,36 +1265,24 @@ auth.onAuthStateChanged(async user => {
 });
 
 // ============================================================
-// PWA: registrar el service worker (permite "Instalar app")
+// PWA - SERVICE WORKER
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sastreriamx/sw.js', { scope: '/sastreriamx/' })
+    navigator.serviceWorker.register('/sastreria_mx/sw.js', { scope: '/sastreria_mx/' })
       .then(reg => console.log('✅ SW registrado correctamente:', reg))
       .catch(err => console.log('❌ SW no registrado:', err));
   });
 }
 
-// Capturar evento de instalación de PWA
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   console.log('✅ App lista para instalar');
-  
-  // Mostrar el banner de instalación
   const banner = document.getElementById('installBanner');
-  if (banner) {
-    banner.classList.add('show');
-  }
-  
-  // Ocultar el botón manual si el banner aparece
-  const manualBtn = document.getElementById('manualInstallBtn');
-  if (manualBtn) {
-    manualBtn.classList.remove('show');
-  }
+  if (banner) banner.classList.add('show');
 });
 
-// Botón de instalación del banner
 document.addEventListener('DOMContentLoaded', () => {
   const installBtn = document.getElementById('installBtn');
   if (installBtn) {
@@ -1312,54 +1293,22 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Usuario:', result.outcome);
         const banner = document.getElementById('installBanner');
         if (banner) banner.classList.remove('show');
-        const manualBtn = document.getElementById('manualInstallBtn');
-        if (manualBtn) manualBtn.classList.remove('show');
         deferredPrompt = null;
       }
     });
   }
   
-  // Botón cerrar banner
   const closeBtn = document.getElementById('closeBannerBtn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       const banner = document.getElementById('installBanner');
       if (banner) banner.classList.remove('show');
-      // Mostrar el botón manual como fallback
-      const manualBtn = document.getElementById('manualInstallBtn');
-      if (manualBtn) manualBtn.classList.add('show');
-    });
-  }
-  
-  // Botón de instalación manual (fallback)
-  const manualBtn = document.getElementById('manualInstallBtn');
-  if (manualBtn) {
-    // Mostrar el botón manual si el banner no aparece después de 3 segundos
-    setTimeout(() => {
-      const banner = document.getElementById('installBanner');
-      if (banner && !banner.classList.contains('show')) {
-        manualBtn.classList.add('show');
-      }
-    }, 3000);
-    
-    manualBtn.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
-        console.log('Usuario:', result.outcome);
-        manualBtn.classList.remove('show');
-        deferredPrompt = null;
-      } else {
-        alert('🔍 La instalación no está disponible en este navegador.\n\nEn Android: usa el menú de Chrome (⋮) → "Instalar aplicación"\nEn iOS: usa el botón "Compartir" → "Agregar a pantalla de inicio"');
-      }
     });
   }
 });
 
 window.addEventListener('appinstalled', () => {
-  console.log('✅ App instalada correctamente');
+  console.log('✅ App instalada');
   const banner = document.getElementById('installBanner');
   if (banner) banner.classList.remove('show');
-  const manualBtn = document.getElementById('manualInstallBtn');
-  if (manualBtn) manualBtn.classList.remove('show');
 });

@@ -42,8 +42,10 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Ignorar peticiones a Firebase, Google APIs y XLSX (siempre en vivo)
-  if (event.request.url.includes('firebase') || 
+  // Ignorar extensiones de Chrome y Grammarly
+  if (event.request.url.includes('chrome-extension') ||
+      event.request.url.includes('grammarly') ||
+      event.request.url.includes('firebase') || 
       event.request.url.includes('googleapis') ||
       event.request.url.includes('gstatic') ||
       event.request.url.includes('xlsx') ||
@@ -66,15 +68,15 @@ self.addEventListener('fetch', event => {
             }
             
             const url = new URL(event.request.url);
-            // Cachear recursos estáticos por extensión
-            if (url.pathname.endsWith('.js') || 
-                url.pathname.endsWith('.css') ||
-                url.pathname.endsWith('.html') ||
-                url.pathname.endsWith('.json') ||
-                url.pathname.endsWith('.png') ||
-                url.pathname.endsWith('.jpg') ||
-                url.pathname.endsWith('.jpeg') ||
-                url.pathname.endsWith('.ico')) {
+            if (url.pathname.includes('/sastreria_mx/') &&
+                (url.pathname.endsWith('.js') || 
+                 url.pathname.endsWith('.css') ||
+                 url.pathname.endsWith('.html') ||
+                 url.pathname.endsWith('.json') ||
+                 url.pathname.endsWith('.png') ||
+                 url.pathname.endsWith('.jpg') ||
+                 url.pathname.endsWith('.jpeg') ||
+                 url.pathname.endsWith('.ico'))) {
               
               const responseToCache = response.clone();
               caches.open(CACHE_NAME)
@@ -86,7 +88,6 @@ self.addEventListener('fetch', event => {
             return response;
           })
           .catch(() => {
-            // Fallback: mostrar la página de inicio
             return caches.match('/sastreria_mx/index.html');
           });
       })
