@@ -2,13 +2,13 @@
 // CONFIGURACIÓN DE FIREBASE - PROYECTO CORRECTO
 // ============================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyAjvLYVBkZ4QVoJFNjjuSjJahNLzb4zAhzgQ",
+  apiKey: "AIzaSyAjVlYBHZ4QVOjFNjjuSJqNhLzb4zAhzgQ",
   authDomain: "sastreriamx.firebaseapp.com",
   projectId: "sastreriamx",
   storageBucket: "sastreriamx.firebasestorage.app",
-  messagingSenderId: "3808757673533",
-  appId: "1:3808757673533:web:c4821472b5f1d61a82dc54",
-  measurementId: "G-4774NG52E"
+  messagingSenderId: "308757673533",
+  appId: "1:308757673533:web:d4821472b5f1d61a82dc54",
+  measurementId: "G-4T74NGS25E"
 };
 
 // Inicializar Firebase - SOLO UNA VEZ
@@ -40,7 +40,7 @@ const MEDIDAS_CAMPOS = {
   "Saco": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
   "Abrigo": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
   "Chaleco": ["Espalda","Hombro","Pecho","Cintura","Largo"],
-  "Camisa": ["Cuello","Hombro","Manga","Pecho","Cintura","Largo"],
+  "Camisa": ["Cuello","Hombro","Manga","Medio Pecho","Cintura","Largo","Puño","Base"],
   "Pantalón": ["Cintura","Cadera","Entrepierna","Largo","Rodilla"],
 };
 const LEGAL_TEXT = "GARANTÍA: Este servicio cuenta con garantía de 15 días naturales a partir de la fecha de entrega, aplicable únicamente a defectos de confección o arreglo (Arts. 77 y 92 de la Ley Federal de Protección al Consumidor). No cubre mal uso, lavado inadecuado ni desgaste normal. Prendas no reclamadas después de 30 días naturales de la fecha de entrega quedarán bajo resguardo con cargo por almacenaje. Presente este ticket para recoger su prenda.";
@@ -79,7 +79,7 @@ function traducirErrorFirebase(e){
     'auth/user-not-found':'No existe una cuenta con ese correo.',
     'auth/wrong-password':'Contraseña incorrecta.',
     'auth/invalid-credential':'Correo o contraseña incorrectos.',
-    'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Falta configurar Firebase.',
+    'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Falta configurar Firebase. Revisa la API Key en script.js',
     'permission-denied':'No tienes permisos. Revisa las reglas de Firestore en Firebase Console.',
   };
   return map[e.code] || ('Error: ' + e.message);
@@ -1269,7 +1269,7 @@ auth.onAuthStateChanged(async user => {
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sastreria_mx/sw.js', { scope: '/sastreria_mx/' })
+    navigator.serviceWorker.register('sw.js', { scope: '/sasteria_mx/' })
       .then(reg => console.log('✅ SW registrado correctamente:', reg))
       .catch(err => console.log('❌ SW no registrado:', err));
   });

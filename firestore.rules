@@ -1,14 +1,18 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Cada empresa = un usuario autenticado (companyId = su uid de Firebase Auth).
+    // Cada empresa = un usuario autenticado (companyId = su uid de Firebase Auth)
     // Solo esa empresa puede leer/escribir su propio documento y subcolecciones
-    // (órdenes, inventario, medidas). Nadie puede ver datos de otra empresa.
     match /companies/{companyId} {
-      allow read, write: if request.auth != null && request.auth.uid == companyId;
-
+      // Permite crear el documento de la empresa solo si no existe
+      allow create: if request.auth != null && request.auth.uid == companyId && !exists(/databases/$(database)/documents/companies/$(companyId));
+      // Permite leer, escribir y actualizar si el usuario está autenticado y es el dueño
+      allow read, write, update: if request.auth != null && request.auth.uid == companyId;
+      
+      // Subcolecciones (órdenes, inventario, medidas, etc.)
       match /{subcollection}/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == companyId;
+        allow read, write, update: if request.auth != null && request.auth.uid == companyId;
+        allow create: if request.auth != null && request.auth.uid == companyId;
       }
     }
   }

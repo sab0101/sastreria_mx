@@ -1,10 +1,10 @@
 // Service Worker para Sastrería SaaS
 const CACHE_NAME = 'sasteria-v1';
 const urlsToCache = [
-  '/sastreria_mx/',
-  '/sastreria_mx/index.html',
-  '/sastreria_mx/icon-192.png',
-  '/sastreria_mx/icon-512.png'
+  '/sasteria_mx/',
+  '/sasteria_mx/index.html',
+  '/sasteria_mx/icon-192.png',
+  '/sasteria_mx/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -68,7 +68,7 @@ self.addEventListener('fetch', event => {
             }
             
             const url = new URL(event.request.url);
-            if (url.pathname.includes('/sastreria_mx/') &&
+            if (url.pathname.includes('/sasteria_mx/') &&
                 (url.pathname.endsWith('.js') || 
                  url.pathname.endsWith('.css') ||
                  url.pathname.endsWith('.html') ||
@@ -88,7 +88,7 @@ self.addEventListener('fetch', event => {
             return response;
           })
           .catch(() => {
-            return caches.match('/sastreria_mx/index.html');
+            return caches.match('/sasteria_mx/index.html');
           });
       })
   );
