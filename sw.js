@@ -1,10 +1,10 @@
 // Service Worker para Sastrería SaaS
-const CACHE_NAME = 'sasteria-v1';
+const CACHE_NAME = 'sasteria-v3';
 const urlsToCache = [
-  '/sasteria_mx/',
-  '/sasteria_mx/index.html',
-  '/sasteria_mx/icon-192.png',
-  '/sasteria_mx/icon-512.png'
+  './',
+  './index.html',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -42,14 +42,17 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // Ignorar extensiones de Chrome y Grammarly
+  // Ignorar extensiones de Chrome, Grammarly y servicios externos (Firebase, Google, CDN de xlsx)
   if (event.request.url.includes('chrome-extension') ||
       event.request.url.includes('grammarly') ||
-      event.request.url.includes('firebase') || 
+      event.request.url.includes('firebase') ||
       event.request.url.includes('googleapis') ||
       event.request.url.includes('gstatic') ||
       event.request.url.includes('xlsx') ||
-      event.request.url.includes('google.com')) {
+      event.request.url.includes('google.com') ||
+      event.request.url.includes('cdnjs.cloudflare.com') ||
+      event.request.url.includes('fonts.googleapis.com') ||
+      event.request.url.includes('fonts.gstatic.com')) {
     event.respondWith(fetch(event.request));
     return;
   }
@@ -60,35 +63,34 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        
+
         return fetch(event.request)
           .then(response => {
             if (!response || response.status !== 200) {
               return response;
             }
-            
+
             const url = new URL(event.request.url);
-            if (url.pathname.includes('/sasteria_mx/') &&
-                (url.pathname.endsWith('.js') || 
-                 url.pathname.endsWith('.css') ||
-                 url.pathname.endsWith('.html') ||
-                 url.pathname.endsWith('.json') ||
-                 url.pathname.endsWith('.png') ||
-                 url.pathname.endsWith('.jpg') ||
-                 url.pathname.endsWith('.jpeg') ||
-                 url.pathname.endsWith('.ico'))) {
-              
+            if (url.pathname.endsWith('.js') ||
+                url.pathname.endsWith('.css') ||
+                url.pathname.endsWith('.html') ||
+                url.pathname.endsWith('.json') ||
+                url.pathname.endsWith('.png') ||
+                url.pathname.endsWith('.jpg') ||
+                url.pathname.endsWith('.jpeg') ||
+                url.pathname.endsWith('.ico')) {
+
               const responseToCache = response.clone();
               caches.open(CACHE_NAME)
                 .then(cache => {
                   cache.put(event.request, responseToCache);
                 });
             }
-            
+
             return response;
           })
           .catch(() => {
-            return caches.match('/sasteria_mx/index.html');
+            return caches.match('./index.html');
           });
       })
   );

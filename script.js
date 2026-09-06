@@ -77,8 +77,9 @@ function traducirErrorFirebase(e){
     'auth/invalid-email':'Correo inválido.',
     'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
     'auth/user-not-found':'No existe una cuenta con ese correo.',
-    'auth/wrong-password':'Contraseña incorrecta.',
+    'auth/wrong-password':'Contraseña actual incorrecta.',
     'auth/invalid-credential':'Correo o contraseña incorrectos.',
+    'auth/requires-recent-login':'Por seguridad, vuelve a escribir tu contraseña actual e inténtalo de nuevo.',
     'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'Falta configurar Firebase. Revisa la API Key en script.js',
     'permission-denied':'No tienes permisos. Revisa las reglas de Firestore en Firebase Console.',
   };
@@ -105,7 +106,7 @@ function resizeImage(file, maxW){
 const MEDIDAS_DIAGRAMS = {
   'Saco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="30" font-size="11" fill="#756A5B">Hombro</text><line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="168" font-size="11" fill="#756A5B">Cintura</text><line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="213" font-size="11" fill="#756A5B">Cadera</text><line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text></svg>',
   'Chaleco': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,40 135,25 L150,30 L143,90 L138,150 L143,205 L97,205 L102,150 L97,90 L90,30 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="90" y1="30" x2="150" y2="30" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="33" font-size="11" fill="#756A5B">Hombro</text><line x1="97" y1="90" x2="143" y2="90" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="93" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="150" x2="138" y2="150" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="195" y="153" font-size="11" fill="#756A5B">Cintura</text><line x1="160" y1="25" x2="160" y2="205" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="163" y="115" font-size="11" fill="#756A5B">Largo</text></svg>',
-  'Camisa': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M108,25 Q120,38 132,25 L155,28 L146,95 L137,165 L146,225 L94,225 L103,165 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,27 L50,35 L35,170 L55,178 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,27 L190,35 L205,170 L185,178 L146,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><circle cx="120" cy="30" r="10" fill="none" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="3,2"/><text x="140" y="18" font-size="11" fill="#756A5B">Cuello</text><line x1="85" y1="29" x2="155" y2="29" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="32" font-size="11" fill="#756A5B">Hombro</text><line x1="94" y1="95" x2="146" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="103" y1="165" x2="137" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="168" font-size="11" fill="#756A5B">Cintura</text><text x="12" y="150" font-size="10" fill="#1F3A5F">Manga</text><line x1="170" y1="25" x2="170" y2="225" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="128" font-size="11" fill="#756A5B">Largo</text></svg>',
+  'Camisa': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M108,25 Q120,38 132,25 L155,28 L146,95 L137,165 L146,225 L94,225 L103,165 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,27 L50,35 L35,170 L55,178 L94,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,27 L190,35 L205,170 L185,178 L146,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><circle cx="120" cy="30" r="10" fill="none" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="3,2"/><text x="140" y="18" font-size="11" fill="#756A5B">Cuello</text><line x1="85" y1="29" x2="155" y2="29" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="32" font-size="11" fill="#756A5B">Hombro</text><line x1="94" y1="95" x2="146" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="98" font-size="11" fill="#756A5B">Medio Pecho</text><line x1="103" y1="165" x2="137" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="210" y="168" font-size="11" fill="#756A5B">Cintura</text><text x="12" y="150" font-size="10" fill="#1F3A5F">Manga</text><line x1="35" y1="172" x2="55" y2="176" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="3,2"/><text x="4" y="190" font-size="10" fill="#756A5B">Puño</text><line x1="94" y1="222" x2="146" y2="222" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="98" y="245" font-size="11" fill="#756A5B">Base</text><line x1="170" y1="25" x2="170" y2="225" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="128" font-size="11" fill="#756A5B">Largo</text></svg>',
   'Pantalón': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M80,20 L160,20 L168,65 L178,250 L150,250 L128,118 L112,118 L90,250 L62,250 L72,65 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="80" y1="22" x2="160" y2="22" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="25" font-size="11" fill="#756A5B">Cintura</text><line x1="72" y1="65" x2="168" y2="65" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="68" font-size="11" fill="#756A5B">Cadera</text><line x1="100" y1="185" x2="145" y2="185" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="225" y="188" font-size="11" fill="#756A5B">Rodilla</text><line x1="120" y1="118" x2="120" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="70" y="278" font-size="10" fill="#756A5B" text-anchor="middle">Entrepierna</text><line x1="240" y1="20" x2="240" y2="250" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="245" y="135" font-size="11" fill="#756A5B">Largo</text></svg>',
   'Abrigo': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 275 300" width="275" height="300"><rect width="275" height="300" fill="#FBF8F2"/><path d="M105,25 Q120,42 135,25 L155,25 L148,95 L138,165 L148,235 L92,235 L102,165 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M85,25 L58,30 L40,125 L58,132 L92,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><path d="M155,25 L182,30 L200,125 L182,132 L148,95 Z" fill="#EFEAE0" stroke="#1F3A5F" stroke-width="2"/><line x1="85" y1="27" x2="155" y2="27" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="30" font-size="11" fill="#756A5B">Hombro</text><line x1="92" y1="95" x2="148" y2="95" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="98" font-size="11" fill="#756A5B">Pecho</text><line x1="102" y1="165" x2="138" y2="165" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="168" font-size="11" fill="#756A5B">Cintura</text><line x1="96" y1="210" x2="144" y2="210" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="205" y="213" font-size="11" fill="#756A5B">Cadera</text><line x1="170" y1="25" x2="170" y2="235" stroke="#B8862E" stroke-width="1.5" stroke-dasharray="4,3"/><text x="173" y="130" font-size="11" fill="#756A5B">Largo</text><text x="18" y="118" font-size="10" fill="#1F3A5F">Manga</text></svg>',
 };
@@ -216,21 +217,21 @@ async function saveOnboarding(){
   const ownerPin = document.getElementById('ob_pin').value.trim();
   const errEl = document.getElementById('obError');
   const sedesLimpias = onboardSedes.filter(s=>s.nombre.trim()).map(s=>({...s, encargados: (s.encargados||[]).filter(Boolean)}));
-  
+
   if(!nombreEmpresa){ errEl.textContent='Ponle un nombre a tu empresa.'; return; }
   if(sedesLimpias.length===0){ errEl.textContent='Agrega al menos una sucursal con nombre.'; return; }
-  
+
   const cfg = {
-    nombreEmpresa, 
-    sedes: sedesLimpias, 
-    tiposPrenda, 
+    nombreEmpresa,
+    sedes: sedesLimpias,
+    tiposPrenda,
     tiposServicio,
     tiposInventario: ["Botones","Cierres","Tela","Hilo","Forro","Otro"],
-    ownerPin: ownerPin || "0000", 
-    commissions: {}, 
+    ownerPin: ownerPin || "0000",
+    commissions: {},
     createdAt: new Date().toISOString()
   };
-  
+
   try {
     errEl.textContent = '⏳ Guardando...';
     errEl.style.color = 'var(--green)';
@@ -806,7 +807,7 @@ function openOrderModal(id){
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
       <button class="btn gold" id="saveBtn" type="button">Guardar</button>
     </div>`;
-  
+
   function fillEncargados(){
     const sede = document.getElementById('f_sede').value;
     document.getElementById('f_encargado').innerHTML = sedeInfo(sede).encargados.map(n=>`<option ${n===o.encargado?'selected':''}>${n}</option>`).join('');
@@ -1142,9 +1143,30 @@ function renderConfig(){
     <h3>Tipos de inventario</h3>
     <textarea id="cfg_tiposInventario" rows="3" style="width:100%;padding:8px;">${(companyConfig.tiposInventario||[]).join('\n')}</textarea>
     <div class="formfoot"><button class="btn gold" id="cfgSaveBtn" type="button">Guardar</button></div>
+
     <h3 style="margin-top:30px;">🔒 PIN del dueño</h3>
     <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" style="max-width:160px;">
     <button class="btn ghost small" id="cfgSavePinBtn" type="button" style="margin-top:10px;">Guardar PIN</button>
+
+    <h3 style="margin-top:30px;">👤 Cuenta de acceso</h3>
+    <div class="note">Correo actual: <b>${currentUser.email}</b></div>
+    <div class="formgrid">
+      <label>Nuevo correo <input type="email" id="cfg_newEmail" placeholder="nuevo@correo.com"></label>
+      <label>Contraseña actual <input type="password" id="cfg_emailPassword"></label>
+    </div>
+    <div class="autherror" id="cfgEmailMsg"></div>
+    <button class="btn ghost small" id="cfgChangeEmailBtn" type="button">Cambiar correo</button>
+
+    <h3 style="margin-top:24px;">🔑 Cambiar contraseña</h3>
+    <div class="formgrid">
+      <label>Contraseña actual <input type="password" id="cfg_currentPassword"></label>
+      <label></label>
+      <label>Nueva contraseña <input type="password" id="cfg_newPassword"></label>
+      <label>Repetir nueva contraseña <input type="password" id="cfg_newPassword2"></label>
+    </div>
+    <div class="autherror" id="cfgPasswordMsg"></div>
+    <button class="btn ghost small" id="cfgChangePasswordBtn" type="button">Cambiar contraseña</button>
+
     <div class="note" style="margin-top:20px;border-color:var(--red);background:var(--red-bg);color:var(--red);">
       <b>⚠️ Zona de peligro</b> - Esto borra TODOS tus datos permanentemente.
     </div>
@@ -1180,6 +1202,49 @@ function renderCfgSedes(){
   }));
 }
 
+async function changeEmailAccount(){
+  const newEmail = document.getElementById('cfg_newEmail').value.trim();
+  const pass = document.getElementById('cfg_emailPassword').value;
+  const errEl = document.getElementById('cfgEmailMsg');
+  errEl.style.color = 'var(--red)'; errEl.textContent = '';
+  if(!newEmail){ errEl.textContent = 'Escribe el nuevo correo.'; return; }
+  if(!pass){ errEl.textContent = 'Escribe tu contraseña actual.'; return; }
+  try{
+    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, pass);
+    await currentUser.reauthenticateWithCredential(credential);
+    await currentUser.verifyBeforeUpdateEmail(newEmail);
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = '✅ Te enviamos un correo de verificación a ' + newEmail + '. Ábrelo para confirmar el cambio.';
+    document.getElementById('cfg_newEmail').value = '';
+    document.getElementById('cfg_emailPassword').value = '';
+  }catch(e){
+    errEl.textContent = traducirErrorFirebase(e);
+  }
+}
+
+async function changePasswordAccount(){
+  const currentPass = document.getElementById('cfg_currentPassword').value;
+  const newPass = document.getElementById('cfg_newPassword').value;
+  const newPass2 = document.getElementById('cfg_newPassword2').value;
+  const errEl = document.getElementById('cfgPasswordMsg');
+  errEl.style.color = 'var(--red)'; errEl.textContent = '';
+  if(!currentPass){ errEl.textContent = 'Escribe tu contraseña actual.'; return; }
+  if(!newPass || newPass.length < 6){ errEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.'; return; }
+  if(newPass !== newPass2){ errEl.textContent = 'Las contraseñas nuevas no coinciden.'; return; }
+  try{
+    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPass);
+    await currentUser.reauthenticateWithCredential(credential);
+    await currentUser.updatePassword(newPass);
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = '✅ Contraseña actualizada correctamente.';
+    document.getElementById('cfg_currentPassword').value = '';
+    document.getElementById('cfg_newPassword').value = '';
+    document.getElementById('cfg_newPassword2').value = '';
+  }catch(e){
+    errEl.textContent = traducirErrorFirebase(e);
+  }
+}
+
 function attachConfigEvents(){
   renderCfgSedes();
   document.getElementById('cfgAddSede').addEventListener('click', ()=>{ draftSedes.push({nombre:'',direccion:'',encargados:['']}); renderCfgSedes(); });
@@ -1198,6 +1263,8 @@ function attachConfigEvents(){
     await saveCompanyConfig({ownerPin});
     alert("PIN actualizado.");
   });
+  document.getElementById('cfgChangeEmailBtn').addEventListener('click', changeEmailAccount);
+  document.getElementById('cfgChangePasswordBtn').addEventListener('click', changePasswordAccount);
   document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
 }
 
@@ -1265,12 +1332,12 @@ auth.onAuthStateChanged(async user => {
 });
 
 // ============================================================
-// PWA - SERVICE WORKER
+// PWA - SERVICE WORKER (ruta y scope relativos, sin nombre de carpeta hardcodeado)
 // ============================================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js', { scope: '/sasteria_mx/' })
-      .then(reg => console.log('✅ SW registrado correctamente:', reg))
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('✅ SW registrado correctamente:', reg.scope))
       .catch(err => console.log('❌ SW no registrado:', err));
   });
 }
@@ -1297,7 +1364,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  
+
   const closeBtn = document.getElementById('closeBannerBtn');
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
