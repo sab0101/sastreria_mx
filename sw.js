@@ -1,5 +1,5 @@
 // Service Worker para Sastrería SaaS
-const CACHE_NAME = 'sasteria-v3';
+const CACHE_NAME = 'sasteria-v4';
 const urlsToCache = [
   './',
   './index.html',

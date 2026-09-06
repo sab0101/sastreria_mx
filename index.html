@@ -226,17 +226,116 @@
       display: flex;
     }
 
-    @media (max-width: 720px) {
-      .sidebar { width: 60px; padding: 16px 8px; }
-      .sidebar .brand .txt, .sidebar .navbtn .dot, .sidebar .navbtn span:not(.icon) { display: none; }
-      .sidebar .navbtn { justify-content: center; font-size: 20px; padding: 12px; }
-      main { padding: 16px; }
-      .formgrid { grid-template-columns: 1fr; }
-      .sedecard .fields { grid-template-columns: 1fr; }
-      .measure-fields { grid-template-columns: 1fr 1fr; }
-      .install-banner { flex-wrap: wrap; gap: 8px; }
-      .install-banner .text { font-size: 12px; }
-      #manualInstallBtn { bottom: 70px; right: 10px; padding: 12px 16px; font-size: 12px; }
+    /* ============================================================
+       NAVEGACIÓN MÓVIL: barra superior + cajón (drawer) + tabbar inferior
+       ============================================================ */
+    .mobile-topbar{
+      display:none;
+      position:sticky; top:0; z-index:40;
+      align-items:center; gap:10px;
+      background:var(--navy-deep); color:#fff;
+      padding:12px 14px;
+    }
+    .mobile-topbar .hamburger{
+      all:unset; cursor:pointer; font-size:22px; line-height:1;
+      padding:6px 10px; border-radius:8px; flex-shrink:0;
+    }
+    .mobile-topbar .hamburger:active{ background:rgba(255,255,255,.14); }
+    .mobile-topbar .mtb-brand{
+      font-family:'Fraunces',serif; font-weight:700; font-size:16px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .drawer-overlay{
+      display:none;
+      position:fixed; inset:0; background:rgba(18,35,58,.5);
+      z-index:59;
+    }
+    .drawer-overlay.show{ display:block; }
+    .sidebar-close{
+      all:unset; cursor:pointer; display:none; margin-left:auto;
+      font-size:20px; color:#D8CFBE; padding:4px 8px;
+    }
+    .bottom-tabbar{
+      display:none;
+      position:fixed; left:0; right:0; bottom:0; z-index:45;
+      background:var(--navy-deep);
+      border-top:1px solid #2a3d54;
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+      justify-content:space-around;
+      align-items:stretch;
+    }
+    .bottom-tabbar button.navbtn{
+      all:unset; cursor:pointer; box-sizing:border-box;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+      flex:1; padding:6px 2px; border-radius:10px; min-height:52px;
+      font-size:10.5px; color:#B9AF9C; text-align:center; font-weight:600;
+    }
+    .bottom-tabbar button.navbtn .tabicon{ font-size:20px; line-height:1; }
+    .bottom-tabbar button.navbtn.active{ color:#fff; background:rgba(184,134,46,.18); }
+
+    @media (max-width: 860px) {
+      #app{ flex-direction:column; }
+      .sidebar{
+        position:fixed; top:0; left:0; bottom:0; z-index:60;
+        width:270px; max-width:84vw;
+        transform:translateX(-105%);
+        transition:transform .25s ease;
+        box-shadow:8px 0 30px rgba(0,0,0,.35);
+      }
+      .sidebar.open{ transform:translateX(0); }
+      .sidebar-close{ display:inline-block; }
+      .mobile-topbar{ display:flex; }
+      .bottom-tabbar{ display:flex; }
+      main{ padding:16px 14px calc(86px + env(safe-area-inset-bottom)); max-width:100%; }
+      .formgrid{ grid-template-columns:1fr; }
+      .sedecard .fields{ grid-template-columns:1fr; }
+      .measure-fields{ grid-template-columns:1fr 1fr; }
+      .install-banner{ flex-wrap:wrap; gap:8px; bottom:64px; }
+      .install-banner .text{ font-size:12px; }
+      #manualInstallBtn{ bottom:136px; right:10px; padding:12px 16px; font-size:12px; }
+      .kpis{ grid-template-columns:repeat(2,1fr); }
+      .rank-grid{ grid-template-columns:1fr; }
+      .pagehead h1{ font-size:21px; }
+
+      /* Controles táctiles más grandes, y font-size 16px evita zoom automático en iOS */
+      select, input[type=text], input[type=tel], input[type=number],
+      input[type=date], input[type=email], input[type=password], textarea{
+        font-size:16px; padding:11px 12px; min-height:44px;
+      }
+      .btn{ padding:12px 18px; font-size:14.5px; min-height:44px; }
+      .btn.small{ min-height:38px; padding:8px 12px; font-size:12.5px; }
+      .rowbtn{ font-size:13px; padding:6px 0; }
+      .filters{ gap:10px; }
+      .filters select, .filters input[type=text]{ flex:1; min-width:130px; }
+
+      /* Modales a pantalla completa: mucho más cómodo para llenar formularios */
+      .overlay{ padding:0; align-items:stretch; }
+      .modal{ max-width:100%; width:100%; min-height:100%; border-radius:0; margin-bottom:0; padding:20px 16px 32px; }
+
+      /* Tablas -> tarjetas apiladas */
+      table.orders, table.commissions{ border:none; background:transparent; }
+      table.orders thead, table.commissions thead{ display:none; }
+      table.orders tbody, table.commissions tbody, table.orders tfoot, table.commissions tfoot{ display:block; }
+      table.orders tr, table.commissions tr{
+        display:block; background:var(--surface); border:1px solid var(--line);
+        border-radius:12px; margin-bottom:10px; padding:4px 14px;
+      }
+      table.orders tr:hover td, table.commissions tr:hover td{ background:transparent; }
+      table.orders td, table.commissions td{
+        display:flex; justify-content:space-between; align-items:flex-start;
+        gap:14px; border-bottom:1px dashed var(--line); padding:9px 0; text-align:right;
+      }
+      table.orders td:last-child, table.commissions td:last-child{ border-bottom:none; }
+      table.orders td::before, table.commissions td::before{
+        content:attr(data-label); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+        color:var(--ink-soft); font-weight:700; text-align:left; flex-shrink:0; padding-top:1px;
+      }
+      table.orders td:not([data-label])::before, table.commissions td:not([data-label])::before{ display:none; }
+      table.orders td:not([data-label]), table.commissions td:not([data-label]){ justify-content:flex-end; }
+      tr.overdue{ background:#FDF4F3 !important; }
+      tr.overdue td{ background:transparent; }
+      .thumbs{ justify-content:flex-end; }
+      .empty{ padding:24px; }
     }
   </style>
 </head>

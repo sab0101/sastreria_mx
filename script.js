@@ -318,11 +318,20 @@ function renderRoot(){
   if(!companyConfig){ root.innerHTML = ''; renderOnboarding(); return; }
   root.innerHTML = `
     <div id="app">
-      <div class="sidebar">
-        <div class="brand"><span class="icon">✂️</span><div class="txt">
-          <div class="mark">${companyConfig.nombreEmpresa}</div>
-          <div class="sub">Seguimiento interno</div>
-        </div></div>
+      <div class="mobile-topbar">
+        <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú">☰</button>
+        <div class="mtb-brand">✂️ ${companyConfig.nombreEmpresa}</div>
+      </div>
+      <div class="drawer-overlay" id="drawerOverlay"></div>
+      <div class="sidebar" id="sidebarMain">
+        <div class="brand">
+          <span class="icon">✂️</span>
+          <div class="txt">
+            <div class="mark">${companyConfig.nombreEmpresa}</div>
+            <div class="sub">Seguimiento interno</div>
+          </div>
+          <button class="sidebar-close" id="sidebarCloseBtn" aria-label="Cerrar menú">✕</button>
+        </div>
         <nav id="nav">
           <button class="navbtn active" data-view="ordenes"><span class="dot"></span> Órdenes</button>
           <button class="navbtn" data-view="inventario"><span class="dot"></span> Inventario</button>
@@ -347,11 +356,34 @@ function renderRoot(){
         <div class="pagehead"><h1 id="pagetitle">Dashboard</h1><div class="today" id="todaylabel"></div></div>
         <div id="view"></div>
       </main>
+      <nav class="bottom-tabbar">
+        <button class="navbtn active" data-view="ordenes"><span class="tabicon">📋</span>Órdenes</button>
+        <button class="navbtn" data-view="inventario"><span class="tabicon">🧵</span>Inventario</button>
+        <button class="navbtn" data-view="medidas"><span class="tabicon">📏</span>Medidas</button>
+        <button class="navbtn" data-view="administracion"><span class="tabicon">🛡️</span>Admin</button>
+      </nav>
     </div>`;
   document.getElementById('logoutLink').addEventListener('click', ()=>auth.signOut());
-  document.querySelectorAll('.navbtn').forEach(b => b.addEventListener('click', () => { currentView = b.dataset.view; render(); }));
+  document.querySelectorAll('.navbtn').forEach(b => b.addEventListener('click', () => { currentView = b.dataset.view; closeDrawer(); render(); }));
   setupSessionSelect();
+  setupMobileDrawer();
   render();
+}
+
+function openDrawer(){
+  document.getElementById('sidebarMain').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('show');
+}
+function closeDrawer(){
+  const sb = document.getElementById('sidebarMain');
+  const ov = document.getElementById('drawerOverlay');
+  if(sb) sb.classList.remove('open');
+  if(ov) ov.classList.remove('show');
+}
+function setupMobileDrawer(){
+  document.getElementById('hamburgerBtn').addEventListener('click', openDrawer);
+  document.getElementById('sidebarCloseBtn').addEventListener('click', closeDrawer);
+  document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 }
 
 function setupSessionSelect(){
@@ -503,10 +535,10 @@ async function attachAdministracionEvents(){
 
 function renderAuditoriaContent(){
   const rows = (window.__auditLog || []).map(a => `<tr>
-    <td>${new Date(a.fecha).toLocaleString('es-MX')}</td>
-    <td>${a.usuario}</td>
-    <td>${a.accion}</td>
-    <td>${a.detalle||''}</td>
+    <td data-label="Fecha">${new Date(a.fecha).toLocaleString('es-MX')}</td>
+    <td data-label="Usuario">${a.usuario}</td>
+    <td data-label="Acción">${a.accion}</td>
+    <td data-label="Detalle">${a.detalle||''}</td>
   </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin actividad registrada todavía.</td></tr>';
   return `
     <div class="note">Últimas ${(window.__auditLog||[]).length} acciones.</div>
@@ -551,7 +583,7 @@ function renderDashboard(){
     const pend = os.filter(o=>o.proceso!=="Terminado").length;
     const venc = os.filter(o=>computeAlert(o).cls==="late").length;
     const ingresos = os.filter(o=>o.fechaRecibido.slice(0,7)===mesActual).reduce((s,o)=>s+Number(o.costo),0);
-    return `<tr><td>${sede}</td><td>${pend}</td><td>${venc}</td><td>${fmtMoney(ingresos)}</td></tr>`;
+    return `<tr><td data-label="Sucursal">${sede}</td><td data-label="Pendientes">${pend}</td><td data-label="Atrasadas">${venc}</td><td data-label="Ingresos del mes">${fmtMoney(ingresos)}</td></tr>`;
   }).join('') || `<tr><td colspan="4" class="empty">Agrega sucursales en Configuración.</td></tr>`;
 
   const mesFilter = window.__dashMes || "";
@@ -607,12 +639,12 @@ function renderDashboard(){
       <div>
         <h2 class="section-title" style="margin-top:0;">Ranking de atrasos</h2>
         <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Atrasos</th><th>Total</th></tr></thead>
-        <tbody>${atrasoRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--red);">${a.atrasos}</b></td><td>${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">🎉 Sin atrasos</td></tr>'}</tbody></table>
+        <tbody>${atrasoRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Atrasos"><b style="color:var(--red);">${a.atrasos}</b></td><td data-label="Total">${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">🎉 Sin atrasos</td></tr>'}</tbody></table>
       </div>
       <div>
         <h2 class="section-title" style="margin-top:0;">Ranking de ventas</h2>
         <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Vendido</th></tr></thead>
-        <tbody>${ventaRanking.map(a=>`<tr><td>${a.encargado}</td><td>${a.sede}</td><td><b style="color:var(--navy);">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table>
+        <tbody>${ventaRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Vendido"><b style="color:var(--navy);">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table>
       </div>
     </div>`;
 }
@@ -659,14 +691,14 @@ function renderOrdenes(){
     const prendasResumen = (o.prendas||[]).map(p=>p.tipo).join(", ") || "—";
     const thumbs = (o.prendas||[]).filter(p=>p.foto).slice(0,3).map(p=>`<img src="${p.foto}">`).join('');
     return `<tr class="${alert.cls==='late' ? 'overdue':''}" data-view="${o.id}" style="cursor:pointer;">
-      <td class="ticket">${ticketLabel(o.ticket)}</td>
-      <td>${o.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.celular}</span></td>
-      <td>${prendasResumen}<div class="thumbs">${thumbs}</div></td>
-      <td>${o.sede}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.encargado}</span></td>
-      <td>Reg: ${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}<br>Entr: ${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td>
-      <td><span class="procbadge">${o.proceso}</span></td>
-      <td>${fmtMoney(o.costo)}<br><span style="color:var(--ink-soft);font-size:11.5px;">saldo ${fmtMoney(pend)}</span></td>
-      <td>${verPapelera ? '<span class="badge done">Archivado</span>' : `<span class="badge ${alert.cls}">${alert.label}</span>`}</td>
+      <td class="ticket" data-label="Ticket">${ticketLabel(o.ticket)}</td>
+      <td data-label="Cliente">${o.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.celular}</span></td>
+      <td data-label="Prendas">${prendasResumen}<div class="thumbs">${thumbs}</div></td>
+      <td data-label="Sede/Encargado">${o.sede}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.encargado}</span></td>
+      <td data-label="Registro/Entrega">Reg: ${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}<br>Entr: ${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td>
+      <td data-label="Proceso"><span class="procbadge">${o.proceso}</span></td>
+      <td data-label="Costo/Saldo">${fmtMoney(o.costo)}<br><span style="color:var(--ink-soft);font-size:11.5px;">saldo ${fmtMoney(pend)}</span></td>
+      <td data-label="Alerta">${verPapelera ? '<span class="badge done">Archivado</span>' : `<span class="badge ${alert.cls}">${alert.label}</span>`}</td>
       <td><button class="rowbtn" data-edit="${o.id}">${verPapelera?'Ver':'Editar'}</button></td>
     </tr>`;
   }).join('') || `<tr><td colspan="9" class="empty">${verPapelera ? 'Papelera vacía.' : 'Sin órdenes.'}</td></tr>`;
@@ -945,11 +977,11 @@ function renderInventario(){
   const rowsHtml = rows.map(x => {
     const stockBajo = Number(x.existenciaActual) < Number(x.stockMinimo||0) && Number(x.stockMinimo||0) > 0;
     return `<tr class="${stockBajo?'overdue':''}">
-      <td>${new Date(x.fecha+"T00:00:00").toLocaleDateString('es-MX')}</td>
-      <td>${x.sede}</td><td>${x.tipo}</td><td>${x.descripcion}</td>
-      <td>${x.cantidad} ${x.unidad}</td>
-      <td>${x.existenciaActual!==undefined ? `${x.existenciaActual} ${x.unidad}${stockBajo?' ⚠️':''}` : '—'}</td>
-      <td>${x.proveedor||'—'}</td>
+      <td data-label="Fecha">${new Date(x.fecha+"T00:00:00").toLocaleDateString('es-MX')}</td>
+      <td data-label="Sede">${x.sede}</td><td data-label="Tipo">${x.tipo}</td><td data-label="Descripción">${x.descripcion}</td>
+      <td data-label="Cantidad">${x.cantidad} ${x.unidad}</td>
+      <td data-label="Existencia">${x.existenciaActual!==undefined ? `${x.existenciaActual} ${x.unidad}${stockBajo?' ⚠️':''}` : '—'}</td>
+      <td data-label="Proveedor">${x.proveedor||'—'}</td>
       <td><button class="rowbtn" data-editinv="${x.id}">Editar</button></td>
     </tr>`;
   }).join('') || `<tr><td colspan="8" class="empty">Sin materiales.</td></tr>`;
@@ -1014,10 +1046,10 @@ function renderMedidas(){
   const searchTerm = (window.__measSearch || "").toLowerCase();
   let rows = measurements.filter(m => !searchTerm || m.cliente.toLowerCase().includes(searchTerm) || m.celular.includes(searchTerm)).sort((a,b)=>a.cliente.localeCompare(b.cliente));
   const rowsHtml = rows.map(m => `<tr>
-    <td>${m.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${m.celular}</span></td>
-    <td>${m.tipo}</td>
-    <td>${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}cm`).join(' · ')}</td>
-    <td>${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
+    <td data-label="Cliente">${m.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${m.celular}</span></td>
+    <td data-label="Prenda">${m.tipo}</td>
+    <td data-label="Medidas (cm)">${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}cm`).join(' · ')}</td>
+    <td data-label="Actualizado">${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
     <td><button class="rowbtn" data-editmeas="${m.id}">Editar</button></td>
   </tr>`).join('') || `<tr><td colspan="5" class="empty">Sin medidas.</td></tr>`;
   return `
@@ -1094,9 +1126,9 @@ function renderComisiones(){
     const total = orders.filter(o=>o.sede===sede && o.encargado===nombre && o.fechaRecibido.slice(0,7)===mesActual).reduce((s,o)=>s+Number(o.costo),0);
     const pct = commissions[key] !== undefined ? commissions[key] : 10;
     const comision = total * pct/100;
-    return `<tr><td>${nombre}</td><td>${sede}</td><td>${fmtMoney(total)}</td>
-      <td><input type="number" class="pctinput" data-key="${key}" value="${pct}" min="0" max="100">%</td>
-      <td>${fmtMoney(comision)}</td></tr>`;
+    return `<tr><td data-label="Encargado">${nombre}</td><td data-label="Sede">${sede}</td><td data-label="Total">${fmtMoney(total)}</td>
+      <td data-label="%"><input type="number" class="pctinput" data-key="${key}" value="${pct}" min="0" max="100">%</td>
+      <td data-label="Comisión">${fmtMoney(comision)}</td></tr>`;
   }).join('');
   const totalGeneral = allStaff.reduce((s,{sede,nombre})=>{
     const total = orders.filter(o=>o.sede===sede && o.encargado===nombre && o.fechaRecibido.slice(0,7)===mesActual).reduce((s,o)=>s+Number(o.costo),0);
@@ -1107,7 +1139,7 @@ function renderComisiones(){
     <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}</div>
     <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total</th><th>%</th><th>Comisión</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" class="empty">Sin encargados.</td></tr>'}</tbody>
-      <tfoot><tr style="font-weight:700;"><td colspan="4">Total</td><td>${fmtMoney(totalGeneral)}</td></tr></tfoot>
+      <tfoot><tr style="font-weight:700;"><td colspan="4" data-label="">Total</td><td data-label="Total general">${fmtMoney(totalGeneral)}</td></tr></tfoot>
     </table>`;
 }
 
