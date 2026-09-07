@@ -389,12 +389,22 @@ function setupSessionSelect(){
   document.getElementById('exportBtn').addEventListener('click', exportOrdersExcel);
 }
 
-function downloadBackup(){
+async function downloadBackup(){
   const data = { empresa: companyConfig.nombreEmpresa, orders, inventory, measurements, commissions: companyConfig.commissions||{}, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `respaldo_${companyId}_${todayStr()}.json`; a.click();
   URL.revokeObjectURL(url);
+  try{
+    await saveCompanyConfig({lastBackupAt: new Date().toISOString()});
+    if(currentView === 'administracion') render();
+  }catch(e){ console.error('No se pudo registrar la fecha del último respaldo:', e); }
+}
+
+function daysSinceBackup(){
+  if(!companyConfig.lastBackupAt) return null;
+  const diffMs = Date.now() - new Date(companyConfig.lastBackupAt).getTime();
+  return Math.floor(diffMs / 86400000);
 }
 
 function exportOrdersExcel(){
@@ -490,6 +500,7 @@ function openForgotPinModal(){
 function renderAdministracion(){
   return `
     ${ownerSessionBar()}
+    ${backupReminderBanner()}
     <div class="filters" style="margin-bottom:20px;">
       <button class="btn ${adminTab==='dashboard'?'gold':'ghost'} small" data-admintab="dashboard" type="button">Dashboard</button>
       <button class="btn ${adminTab==='comisiones'?'gold':'ghost'} small" data-admintab="comisiones" type="button">Comisiones</button>
@@ -497,6 +508,20 @@ function renderAdministracion(){
       <button class="btn ${adminTab==='auditoria'?'gold':'ghost'} small" data-admintab="auditoria" type="button">Historial</button>
     </div>
     <div id="adminContent">Cargando…</div>`;
+}
+
+function backupReminderBanner(){
+  const days = daysSinceBackup();
+  if(days === null){
+    return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">💾 Aún no has hecho ningún respaldo (JSON). Te recomendamos hacer el primero desde el botón "Respaldo (JSON)" del menú.</div>`;
+  }
+  if(days >= 14){
+    return `<div class="note" style="background:var(--red-bg);border-color:var(--red);color:var(--red);">💾 Llevas <b>${days} días</b> sin hacer un respaldo (JSON). Te recomendamos hacer uno cuanto antes.</div>`;
+  }
+  if(days >= 7){
+    return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">💾 Han pasado <b>${days} días</b> desde tu último respaldo (JSON). Considera hacer uno pronto.</div>`;
+  }
+  return '';
 }
 
 function ownerSessionBar(){
