@@ -356,12 +356,6 @@ function renderRoot(){
         <div class="pagehead"><h1 id="pagetitle">Dashboard</h1><div class="today" id="todaylabel"></div></div>
         <div id="view"></div>
       </main>
-      <nav class="bottom-tabbar">
-        <button class="navbtn active" data-view="ordenes"><span class="tabicon">📋</span>Órdenes</button>
-        <button class="navbtn" data-view="inventario"><span class="tabicon">🧵</span>Inventario</button>
-        <button class="navbtn" data-view="medidas"><span class="tabicon">📏</span>Medidas</button>
-        <button class="navbtn" data-view="administracion"><span class="tabicon">🛡️</span>Admin</button>
-      </nav>
     </div>`;
   document.getElementById('logoutLink').addEventListener('click', ()=>auth.signOut());
   document.querySelectorAll('.navbtn').forEach(b => b.addEventListener('click', () => { currentView = b.dataset.view; closeDrawer(); render(); }));
