@@ -40,10 +40,73 @@ const MEDIDAS_CAMPOS = {
   "Saco": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
   "Abrigo": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
   "Chaleco": ["Espalda","Hombro","Pecho","Cintura","Largo"],
-  "Camisa": ["Cuello","Hombro","Manga","Medio Pecho","Cintura","Largo","Puño","Base"],
+  "Camisa": ["Cuello","Bata","Manga","Pecho","Cintura","Base","Puño","Media Delantero","Talle","Largo"],
   "Pantalón": ["Cintura","Cadera","Entrepierna","Largo","Rodilla"],
 };
+
+// Campos adicionales (no numéricos) por tipo de prenda, específicos de confección.
+// type: 'text' | 'number' | 'email' | 'select' | 'textarea'
+const MEDIDAS_EXTRA_CAMPOS = {
+  "Camisa": [
+    {key:'cantidad', label:'Cantidad de camisas', type:'number'},
+    {key:'correo', label:'Correo del cliente', type:'email'},
+    {key:'iniciales', label:'Iniciales (opcional)', type:'text'},
+    {key:'inicialesDonde', label:'Dónde van las iniciales', type:'select', options:['Bolsa','Puño','Costado']},
+    {key:'inicialesColor', label:'Color de las iniciales', type:'text'},
+    {key:'espalda', label:'Espalda', type:'select', options:['Pinzas','Tablón','Plano','Plano invertido']},
+    {key:'delantero', label:'Delantero', type:'select', options:['Aletilla','Sin aletilla','Botones ocultos']},
+    {key:'bolsa', label:'¿Lleva bolsa?', type:'select', options:['Sí','No']},
+    {key:'tipoPuno', label:'Tipo de puño (1-10)', type:'select', options: Array.from({length:10},(_,i)=>String(i+1))},
+    {key:'tipoCuello', label:'Tipo de cuello (1-22)', type:'select', options: Array.from({length:22},(_,i)=>String(i+1))},
+    {key:'varillas', label:'Varillas', type:'text'},
+    {key:'costura', label:'Costura', type:'text'},
+    {key:'tipoCorte', label:'Tipo de corte', type:'text'},
+    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+  ],
+  "Saco": [
+    {key:'bolsas', label:'Bolsas', type:'text'},
+    {key:'solapa', label:'Solapa', type:'text'},
+    {key:'botones', label:'Botones', type:'text'},
+    {key:'aberturas', label:'Aberturas', type:'text'},
+    {key:'forro', label:'Forro', type:'text'},
+    {key:'ojales', label:'Ojales', type:'text'},
+    {key:'corte', label:'Recto / Cruzado', type:'select', options:['Recto','Cruzado']},
+    {key:'estampado', label:'Cuadros / Rayas / Lisa', type:'select', options:['Cuadros','Rayas','Lisa']},
+    {key:'tela', label:'Tela', type:'text'},
+    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+  ],
+  "Abrigo": [
+    {key:'bolsas', label:'Bolsas', type:'text'},
+    {key:'solapa', label:'Solapa', type:'text'},
+    {key:'botones', label:'Botones', type:'text'},
+    {key:'aberturas', label:'Aberturas', type:'text'},
+    {key:'forro', label:'Forro', type:'text'},
+    {key:'ojales', label:'Ojales', type:'text'},
+    {key:'corte', label:'Recto / Cruzado', type:'select', options:['Recto','Cruzado']},
+    {key:'tela', label:'Tela', type:'text'},
+    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+  ],
+  "Chaleco": [
+    {key:'estampado', label:'Cuadros / Rayas / Lisa', type:'select', options:['Cuadros','Rayas','Lisa']},
+    {key:'tela', label:'Tela', type:'text'},
+    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+  ],
+  "Pantalón": [
+    {key:'bolsasDelanteras', label:'Bolsas delanteras', type:'text'},
+    {key:'bolsasTraseras', label:'Bolsas traseras', type:'text'},
+    {key:'pliegues', label:'Pliegues', type:'text'},
+    {key:'valenciana', label:'Valenciana', type:'text'},
+    {key:'forro', label:'Forro', type:'text'},
+    {key:'trabas', label:'Trabas', type:'text'},
+    {key:'pretina', label:'Pretina', type:'text'},
+    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+  ],
+};
+
 const LEGAL_TEXT = "GARANTÍA: Este servicio cuenta con garantía de 15 días naturales a partir de la fecha de entrega, aplicable únicamente a defectos de confección o arreglo (Arts. 77 y 92 de la Ley Federal de Protección al Consumidor). No cubre mal uso, lavado inadecuado ni desgaste normal. Prendas no reclamadas después de 30 días naturales de la fecha de entrega quedarán bajo resguardo con cargo por almacenaje. Presente este ticket para recoger su prenda.";
+
+const CONTRATO_TEXT = "CONTRATO DE SERVICIO QUE CELEBRAN EL PRESTADOR DEL SERVICIO Y EL CONSUMIDOR CUYO NOMBRE Y DATOS CONSTAN EN EL ANVERSO DE ESTE DOCUMENTO COMO PARTE INTEGRAL DEL MISMO, SUJETANDOSE AL TENOR DE LAS SIGUIENTES CLAUSULAS: 1. El objeto de este contrato es la compostura de las prendas que en el anverso se describen; en caso de ser diferentes se especificará. 2. Deberán quedar especificados en la orden de servicio: a) la fecha de entrega; b) cualquier deterioro que tenga la prenda; c) cualquier riesgo que corra la prenda en el proceso. 3. El prestador del servicio se obliga: a) revisar el estado que guardan las prendas, haciendo ver al consumidor cualquier deterioro o riesgo en el proceso de la reparación o costura; b) reparar las prendas en caso de deterioro parcial imputable a él mismo, dentro de los 30 días siguientes a la presentación de la inconformidad del consumidor, sin costo alguno para éste, aún cuando se haya subcontratado el servicio con terceros; c) devolver el importe del servicio no realizado cuando previamente se haya cobrado; d) indemnizar en caso de deterioro total o pérdida, salvo causas de fuerza mayor, a su propietario hasta con un máximo de 12 veces el precio del servicio pactado por dicha prenda, o en su defecto el que el consumidor demuestre que tenía en el momento de recoger las prendas, o un máximo del 60% del valor de la prenda que las partes de común acuerdo hayan declarado, o en su defecto que el consumidor pueda demostrar fehacientemente (factura). La garantía se limita al cumplimiento del servicio solicitado y se hará válida en el mismo establecimiento; prendas que hayan salido del establecimiento no admiten reclamación por este concepto; e) entregar las prendas en el día pactado en la orden de servicio, salvo causas de fuerza mayor; f) identificarse plenamente ante el consumidor en caso de que se preste el servicio a domicilio; de haber un cargo adicional por dicho servicio, se especificará en el anverso del presente contrato. 4. El prestador de servicio no es responsable de objetos y/o valores olvidados en las prendas.";
+
 
 // ============================================================
 // UTILIDADES
@@ -51,6 +114,13 @@ const LEGAL_TEXT = "GARANTÍA: Este servicio cuenta con garantía de 15 días na
 function fmtMoney(n){ return "$" + (Number(n)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function ticketLabel(n){ return "SAS-" + String(n).padStart(6,'0'); }
+function folioMedidaLabel(n){ return "OT-" + String(n).padStart(6,'0'); }
+function nextMeasureFolio(){ return measurements.length ? Math.max(...measurements.map(m=>m.folio||0)) + 1 : 1; }
+function waLink(phone, text){
+  const digits = String(phone||'').replace(/\D/g,'');
+  const withCountry = digits.length === 10 ? '52' + digits : digits;
+  return `https://wa.me/${withCountry}?text=${encodeURIComponent(text)}`;
+}
 function daysDiff(dateStr){
   const d = new Date(dateStr + "T00:00:00"); const t = new Date(todayStr() + "T00:00:00");
   return Math.round((d - t) / 86400000);
@@ -624,7 +694,14 @@ function renderDashboard(){
   const atrasoRanking = Object.values(atrasoMap).filter(x=>x.atrasos>0).sort((a,b)=>b.atrasos-a.atrasos).slice(0,8);
 
   const ventaMap = {};
-  filtered.forEach(o => { const key = o.encargado + "|" + o.sede; if(!ventaMap[key]) ventaMap[key] = {encargado:o.encargado, sede:o.sede, total:0}; ventaMap[key].total += Number(o.costo||0); });
+  filtered.forEach(o => {
+    (o.prendas && o.prendas.length ? o.prendas : [{encargado:o.encargado, precio:o.costo}]).forEach(p => {
+      const enc = p.encargado || o.encargado;
+      const key = enc + "|" + o.sede;
+      if(!ventaMap[key]) ventaMap[key] = {encargado:enc, sede:o.sede, total:0};
+      ventaMap[key].total += Number(p.precio||0);
+    });
+  });
   const ventaRanking = Object.values(ventaMap).sort((a,b)=>b.total-a.total).slice(0,8);
 
   return `
@@ -763,11 +840,17 @@ function attachOrdenesEvents(){
 // ÓRDENES - MODALES
 // ============================================================
 function renderPrendasRows(){
+  const sedeActual = document.getElementById('f_sede')?.value || sedeNames()[0] || "";
+  const encargadosSede = sedeInfo(sedeActual).encargados || [];
+  // Si una prenda (de una orden creada antes de esta función) no tiene encargado asignado,
+  // se sincroniza el dato con la primera opción visible para evitar que se guarde vacío por error.
+  draftPrendas.forEach(p => { if(!p.encargado && encargadosSede.length) p.encargado = encargadosSede[0]; });
   document.getElementById('prendasList').innerHTML = draftPrendas.map((p, i) => `
     <div class="subrow">
       <div class="fields">
         <label>Tipo <select data-pi="${i}" data-field="tipo">${(companyConfig.tiposPrenda||[]).map(t=>`<option ${t===p.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
         <label>Servicio <select data-pi="${i}" data-field="servicio">${(companyConfig.tiposServicio||[]).map(t=>`<option ${t===p.servicio?'selected':''}>${t}</option>`).join('')}</select></label>
+        <label>Encargado <select data-pi="${i}" data-field="encargado">${encargadosSede.map(n=>`<option ${n===p.encargado?'selected':''}>${n}</option>`).join('')}</select></label>
         <label>Detalle <input type="text" data-pi="${i}" data-field="nota" value="${p.nota||''}"></label>
         <label>Precio <input type="number" data-pi="${i}" data-field="precio" value="${p.precio||0}" min="0"></label>
         <label>Foto ${p.foto?`<img src="${p.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">`:''}<input type="file" accept="image/*" capture="environment" data-pi="${i}" data-field="foto"></label>
@@ -862,6 +945,7 @@ function openOrderModal(id){
   function fillEncargados(){
     const sede = document.getElementById('f_sede').value;
     document.getElementById('f_encargado').innerHTML = sedeInfo(sede).encargados.map(n=>`<option ${n===o.encargado?'selected':''}>${n}</option>`).join('');
+    renderPrendasRows();
   }
   fillEncargados();
   document.getElementById('f_sede').addEventListener('change', fillEncargados);
@@ -878,7 +962,8 @@ function openOrderModal(id){
     if(confirm('¿Cerrar sin guardar?')) document.getElementById('overlay').classList.remove('show');
   });
   document.getElementById('addPrendaBtn').addEventListener('click', () => {
-    draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", nota:"", precio:0, foto:""});
+    const sede = document.getElementById('f_sede').value;
+    draftPrendas.push({tipo:(companyConfig.tiposPrenda||[])[0]||"", servicio:(companyConfig.tiposServicio||[])[0]||"", encargado: sedeInfo(sede).encargados[0]||"", nota:"", precio:0, foto:""});
     renderPrendasRows(); recomputeCostoTotal();
   });
   document.getElementById('addPagoBtn').addEventListener('click', () => { draftPagos.push({fecha: todayStr(), monto:0, metodo:METODOS[0]}); renderPagosRows(); });
@@ -902,23 +987,51 @@ async function saveOrderFromModal(){
     prendas: draftPrendas, pagos: draftPagos,
   };
   if(!data.cliente || !data.celular){ alert("Cliente y celular son obligatorios."); return; }
+  let savedOrder, esOrdenNueva = false, pasoATerminado = false;
   if(editingId){
     const prev = orders.find(o=>o.id===editingId);
     let fechaEntregaReal = prev.fechaEntregaReal || null;
-    if(data.proceso === "Terminado" && prev.proceso !== "Terminado") fechaEntregaReal = todayStr();
+    if(data.proceso === "Terminado" && prev.proceso !== "Terminado"){ fechaEntregaReal = todayStr(); pasoATerminado = true; }
     if(data.proceso !== "Terminado") fechaEntregaReal = null;
     const updated = {...prev, ...data, fechaEntregaReal, id: editingId};
     await saveOrderDoc(updated);
     const idx = orders.findIndex(o=>o.id===editingId); orders[idx] = updated;
     await logAudit('Editar orden', `${ticketLabel(updated.ticket)} — ${updated.cliente}`);
+    savedOrder = updated;
   }else{
     const newOrder = {...data, fechaEntregaReal: data.proceso==="Terminado" ? todayStr() : null};
     const newId = await saveOrderDoc(newOrder);
     orders.push({...newOrder, id:newId});
     await logAudit('Crear orden', `${ticketLabel(newOrder.ticket)} — ${newOrder.cliente}`);
+    savedOrder = {...newOrder, id:newId};
+    esOrdenNueva = true;
   }
   document.getElementById('overlay').classList.remove('show');
   render();
+  if((esOrdenNueva || pasoATerminado) && savedOrder.celular){
+    // No se abre WhatsApp automáticamente: los navegadores (sobre todo en celular)
+    // bloquean ventanas emergentes que no vengan de un clic directo del usuario.
+    // En su lugar, se muestra el detalle de la orden con el botón de WhatsApp listo.
+    setTimeout(() => openDetailModal(savedOrder.id), 200);
+  }
+}
+
+function buildBoletaWhatsAppMsg(o){
+  const prendas = (o.prendas||[]).map(p=>`- ${p.tipo} (${p.servicio}): ${fmtMoney(p.precio||0)}`).join('\n') || '(sin prendas)';
+  return `Hola ${o.cliente}, gracias por tu pedido en ${companyConfig.nombreEmpresa}.\n\n`+
+    `Ticket: ${ticketLabel(o.ticket)}\n`+
+    `Fecha de entrega estimada: ${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}\n\n`+
+    `Prendas:\n${prendas}\n\n`+
+    `Costo total: ${fmtMoney(o.costo)}\n`+
+    `Abonado: ${fmtMoney(totalAbonado(o))}\n`+
+    `Saldo: ${fmtMoney(saldo(o))}\n\n`+
+    `Conserva este mensaje como tu comprobante. ¡Gracias por tu preferencia!`;
+}
+
+function buildListoWhatsAppMsg(o){
+  return `Hola ${o.cliente}, tu prenda (Ticket ${ticketLabel(o.ticket)}) ya está lista en ${o.sede}. Puedes pasar a recogerla cuando gustes.\n\n`+
+    `Recuerda: transcurridos 30 días naturales sin recoger tu(s) prenda(s), ${companyConfig.nombreEmpresa} no se hace responsable de la(s) misma(s).\n\n`+
+    `¡Gracias por tu preferencia!`;
 }
 
 function receiptLinesHtml(o){
@@ -950,12 +1063,68 @@ function openDetailModal(id){
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cerrar</button>
       <button class="btn ghost" id="printClienteBtn" type="button">🖨️ Ticket</button>
+      <button class="btn ghost" id="pdfOrderBtn" type="button">📄 PDF + contrato</button>
+      <button class="btn ghost" id="waBoletaBtn" type="button">📱 Boleta WhatsApp</button>
+      ${o.proceso === 'Terminado' ? `<button class="btn ghost" id="waListoBtn" type="button">📱 Avisar listo</button>` : ''}
       <button class="btn gold" id="editFromDetailBtn" type="button">Editar</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('editFromDetailBtn').addEventListener('click', () => openOrderModal(o.id));
   document.getElementById('printClienteBtn').addEventListener('click', () => printTicket(o, 'cliente'));
+  document.getElementById('pdfOrderBtn').addEventListener('click', () => downloadOrderPDF(o));
+  document.getElementById('waBoletaBtn').addEventListener('click', () => {
+    if(!o.celular){ alert('Esta orden no tiene celular registrado.'); return; }
+    window.open(waLink(o.celular, buildBoletaWhatsAppMsg(o)), '_blank');
+  });
+  const waListoBtnEl = document.getElementById('waListoBtn');
+  if(waListoBtnEl) waListoBtnEl.addEventListener('click', () => {
+    if(!o.celular){ alert('Esta orden no tiene celular registrado.'); return; }
+    window.open(waLink(o.celular, buildListoWhatsAppMsg(o)), '_blank');
+  });
   document.getElementById('overlay').classList.add('show');
+}
+
+function downloadOrderPDF(o){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 18;
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.text(companyConfig.nombreEmpresa || 'Sastrería', 14, y); y += 7;
+  doc.setFontSize(11); doc.setFont('helvetica','normal');
+  doc.text(sedeInfo(o.sede).direccion || o.sede, 14, y); y += 10;
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(`Orden ${ticketLabel(o.ticket)}`, 14, y); y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  const linea = (label, val) => { doc.text(`${label}: ${val ?? '—'}`, 14, y); y += 6; };
+  linea('Cliente', o.cliente);
+  linea('Celular', o.celular);
+  linea('Registro', new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX'));
+  linea('Entrega', new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX'));
+  linea('Sede / Encargado', `${o.sede} / ${o.encargado}`);
+  linea('Proceso', o.proceso);
+  y += 3;
+  doc.setFont('helvetica','bold'); doc.text('Prendas', 14, y); y += 6;
+  doc.setFont('helvetica','normal');
+  (o.prendas||[]).forEach(p => {
+    doc.text(`- ${p.tipo} (${p.servicio})${p.nota?` - ${p.nota}`:''}: ${fmtMoney(p.precio||0)}`, 14, y); y += 6;
+  });
+  y += 3;
+  doc.setFont('helvetica','bold');
+  doc.text(`Costo total: ${fmtMoney(o.costo)}`, 14, y); y += 6;
+  doc.setFont('helvetica','normal');
+  doc.text(`Abonado: ${fmtMoney(totalAbonado(o))}`, 14, y); y += 6;
+  doc.text(`Saldo: ${fmtMoney(saldo(o))}`, 14, y); y += 6;
+  if(o.notas){ y += 3; const t = doc.splitTextToSize(`Notas: ${o.notas}`, 180); doc.text(t, 14, y); }
+
+  // Segunda página: contrato de servicio (reverso)
+  doc.addPage();
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('CONTRATO DE SERVICIO', 14, 18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  const contratoLines = doc.splitTextToSize(CONTRATO_TEXT, 182);
+  doc.text(contratoLines, 14, 28);
+
+  doc.save(`orden_${ticketLabel(o.ticket)}_${o.cliente.replace(/\s+/g,'_')}.pdf`);
 }
 
 function printTicket(o, tipo){
@@ -1063,17 +1232,18 @@ function openInventoryModal(id){
 // ============================================================
 function renderMedidas(){
   const searchTerm = (window.__measSearch || "").toLowerCase();
-  let rows = measurements.filter(m => !searchTerm || m.cliente.toLowerCase().includes(searchTerm) || m.celular.includes(searchTerm)).sort((a,b)=>a.cliente.localeCompare(b.cliente));
+  let rows = measurements.filter(m => !searchTerm || m.cliente.toLowerCase().includes(searchTerm) || m.celular.includes(searchTerm)).sort((a,b)=>(b.folio||0)-(a.folio||0));
   const rowsHtml = rows.map(m => `<tr>
+    <td data-label="Orden">${folioMedidaLabel(m.folio||0)}</td>
     <td data-label="Cliente">${m.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${m.celular}</span></td>
     <td data-label="Prenda">${m.tipo}</td>
     <td data-label="Medidas (cm)">${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}cm`).join(' · ')}</td>
     <td data-label="Actualizado">${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
     <td><button class="rowbtn" data-editmeas="${m.id}">Editar</button></td>
-  </tr>`).join('') || `<tr><td colspan="5" class="empty">Sin medidas.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin medidas.</td></tr>`;
   return `
     <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
-    <table class="orders"><thead><tr><th>Cliente</th><th>Prenda</th><th>Medidas (cm)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    <table class="orders"><thead><tr><th>Orden</th><th>Cliente</th><th>Prenda</th><th>Medidas (cm)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
 }
 
 function attachMedidasEvents(){
@@ -1086,11 +1256,25 @@ function renderMeasureFields(tipo, medidas){
   return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (cm) <input type="number" class="measfield" data-campo="${campo}" value="${medidas[campo]??''}" min="0"></label>`).join('');
 }
 
+function renderExtraFields(tipo, extra){
+  const config = MEDIDAS_EXTRA_CAMPOS[tipo] || [];
+  return config.map(f => {
+    const val = extra[f.key] ?? '';
+    if(f.type === 'select'){
+      return `<label>${f.label} <select class="measextra" data-key="${f.key}"><option value="">—</option>${f.options.map(o=>`<option ${String(val)===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
+    }
+    if(f.type === 'textarea'){
+      return `<label class="full">${f.label} <textarea class="measextra" data-key="${f.key}" rows="2" style="width:100%;">${val}</textarea></label>`;
+    }
+    return `<label>${f.label} <input type="${f.type}" class="measextra" data-key="${f.key}" value="${val}"></label>`;
+  }).join('');
+}
+
 function openMeasureModal(id){
   editingMeasureId = id;
-  const m = id ? measurements.find(x=>x.id===id) : { cliente:"", celular:"", tipo:"Saco", medidas:{}, notas:"", historial:[] };
+  const m = id ? measurements.find(x=>x.id===id) : { folio: nextMeasureFolio(), cliente:"", celular:"", correo:"", tipo:"Saco", medidas:{}, extra:{}, notas:"", historial:[] };
   document.getElementById('modalBox').innerHTML = `
-    <h2>${id ? 'Editar medidas' : 'Nuevas medidas'}</h2>
+    <h2>${id ? `Editar medidas — ${folioMedidaLabel(m.folio||0)}` : `Nuevas medidas (${folioMedidaLabel(m.folio)})`}</h2>
     <div class="formgrid">
       <label>Cliente <input type="text" id="m_cliente" value="${m.cliente}"></label>
       <label>Celular <input type="tel" id="m_celular" value="${m.celular}"></label>
@@ -1099,15 +1283,26 @@ function openMeasureModal(id){
     </div>
     <h3>Medidas (cm)</h3>
     <div class="measure-layout"><div class="measure-fields" id="measureFields"></div><div class="measure-diagram" id="measureDiagram"></div></div>
+    <h3>Detalles de confección</h3>
+    <div class="formgrid" id="measureExtraFields"></div>
     ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}cm`).join(', ')}</li>`).join('')}</ul></div>` : ''}
-    <div class="formfoot"><button class="btn ghost" id="cancelBtn" type="button">Cancelar</button><button class="btn gold" id="saveMeasBtn" type="button">Guardar</button></div>`;
+    <div class="formfoot">
+      <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
+      ${id ? `<button class="btn ghost" id="pdfMeasBtn" type="button">📄 Descargar PDF</button>` : ''}
+      <button class="btn gold" id="saveMeasBtn" type="button">Guardar</button>
+    </div>`;
   function fillFields(){
-    document.getElementById('measureFields').innerHTML = renderMeasureFields(document.getElementById('m_tipo').value, m.medidas);
-    document.getElementById('measureDiagram').innerHTML = MEDIDAS_DIAGRAMS[document.getElementById('m_tipo').value] || '';
+    const tipo = document.getElementById('m_tipo').value;
+    document.getElementById('measureFields').innerHTML = renderMeasureFields(tipo, m.medidas);
+    document.getElementById('measureDiagram').innerHTML = MEDIDAS_DIAGRAMS[tipo] || '';
+    document.getElementById('measureExtraFields').innerHTML = renderExtraFields(tipo, m.extra||{});
   }
   fillFields();
   document.getElementById('m_tipo').addEventListener('change', fillFields);
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
+  if(id){
+    document.getElementById('pdfMeasBtn').addEventListener('click', () => downloadMeasurementPDF(collectCurrentMeasureFormData(m)));
+  }
   document.getElementById('saveMeasBtn').addEventListener('click', async () => {
     const cliente = document.getElementById('m_cliente').value.trim();
     const celular = document.getElementById('m_celular').value.trim();
@@ -1116,20 +1311,78 @@ function openMeasureModal(id){
     if(!cliente || !celular){ alert("Cliente y celular son obligatorios."); return; }
     const medidas = {};
     document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = Number(inp.value)||0; });
+    const extra = {};
+    document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
     if(id){
       const historial = m.historial || [];
       if(m.medidas && Object.keys(m.medidas).length) historial.push({fecha: m.fechaActualizacion, medidas: m.medidas});
-      const updated = {...m, cliente, celular, tipo, medidas, notas, fechaActualizacion: todayStr(), historial, id};
+      const updated = {...m, cliente, celular, tipo, medidas, extra, notas, fechaActualizacion: todayStr(), historial, id};
       await saveMeasurementDoc(updated);
       const idx = measurements.findIndex(x=>x.id===id); measurements[idx] = updated;
     }else{
-      const newM = { cliente, celular, tipo, medidas, notas, fechaActualizacion: todayStr(), historial:[] };
+      const newM = { folio: m.folio, cliente, celular, tipo, medidas, extra, notas, fechaActualizacion: todayStr(), historial:[] };
       const newId = await saveMeasurementDoc(newM);
       measurements.push({...newM, id:newId});
     }
     document.getElementById('overlay').classList.remove('show'); render();
   });
   document.getElementById('overlay').classList.add('show');
+}
+
+function collectCurrentMeasureFormData(base){
+  const medidas = {};
+  document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = Number(inp.value)||0; });
+  const extra = {};
+  document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
+  return {
+    ...base,
+    cliente: document.getElementById('m_cliente').value.trim() || base.cliente,
+    celular: document.getElementById('m_celular').value.trim() || base.celular,
+    tipo: document.getElementById('m_tipo').value,
+    notas: document.getElementById('m_notas').value.trim(),
+    medidas, extra,
+  };
+}
+
+function downloadMeasurementPDF(m){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  let y = 18;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(companyConfig.nombreEmpresa || 'Sastrería', 14, y); y += 7;
+  doc.setFontSize(12); doc.text(`Orden de trabajo ${folioMedidaLabel(m.folio||0)}`, 14, y); y += 9;
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  const linea = (label, val) => { doc.text(`${label}: ${val ?? '—'}`, 14, y); y += 6; };
+  linea('Cliente', m.cliente);
+  linea('Celular', m.celular);
+  if(m.extra && m.extra.correo) linea('Correo', m.extra.correo);
+  linea('Prenda', m.tipo);
+  linea('Actualizado', new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX'));
+  y += 3;
+  doc.setFont('helvetica','bold'); doc.text('Medidas (cm)', 14, y); y += 6;
+  doc.setFont('helvetica','normal');
+  MEDIDAS_CAMPOS[m.tipo].forEach(campo => { linea(campo, `${m.medidas[campo] ?? '—'} cm`); });
+  const extraConfig = MEDIDAS_EXTRA_CAMPOS[m.tipo] || [];
+  if(extraConfig.length){
+    y += 3;
+    doc.setFont('helvetica','bold'); doc.text('Detalles de confección', 14, y); y += 6;
+    doc.setFont('helvetica','normal');
+    extraConfig.forEach(f => {
+      if(f.key === 'correo') return; // ya mostrado arriba
+      const val = (m.extra||{})[f.key];
+      if(!val) return;
+      const text = doc.splitTextToSize(`${f.label}: ${val}`, 180);
+      doc.text(text, 14, y); y += 6*text.length;
+    });
+  }
+  if(m.notas){
+    y += 3;
+    doc.setFont('helvetica','bold'); doc.text('Notas', 14, y); y += 6;
+    doc.setFont('helvetica','normal');
+    const text = doc.splitTextToSize(m.notas, 180);
+    doc.text(text, 14, y);
+  }
+  doc.save(`medidas_${folioMedidaLabel(m.folio||0)}_${m.cliente.replace(/\s+/g,'_')}.pdf`);
 }
 
 // ============================================================
@@ -1140,9 +1393,18 @@ function renderComisiones(){
   let allStaff = [];
   (companyConfig.sedes||[]).forEach(s => (s.encargados||[]).forEach(n => allStaff.push({sede:s.nombre, nombre:n})));
   const commissions = companyConfig.commissions || {};
+
+  function totalPorEncargado(sede, nombre){
+    return orders.filter(o=>o.sede===sede && o.fechaRecibido.slice(0,7)===mesActual)
+      .reduce((s,o)=>{
+        const prendasDe = (o.prendas && o.prendas.length ? o.prendas : [{encargado:o.encargado, precio:o.costo}]);
+        return s + prendasDe.filter(p => (p.encargado||o.encargado) === nombre).reduce((a,p)=>a+Number(p.precio||0),0);
+      }, 0);
+  }
+
   const rows = allStaff.map(({sede,nombre}) => {
     const key = sede+"|"+nombre;
-    const total = orders.filter(o=>o.sede===sede && o.encargado===nombre && o.fechaRecibido.slice(0,7)===mesActual).reduce((s,o)=>s+Number(o.costo),0);
+    const total = totalPorEncargado(sede, nombre);
     const pct = commissions[key] !== undefined ? commissions[key] : 10;
     const comision = total * pct/100;
     return `<tr><td data-label="Encargado">${nombre}</td><td data-label="Sede">${sede}</td><td data-label="Total">${fmtMoney(total)}</td>
@@ -1150,12 +1412,12 @@ function renderComisiones(){
       <td data-label="Comisión">${fmtMoney(comision)}</td></tr>`;
   }).join('');
   const totalGeneral = allStaff.reduce((s,{sede,nombre})=>{
-    const total = orders.filter(o=>o.sede===sede && o.encargado===nombre && o.fechaRecibido.slice(0,7)===mesActual).reduce((s,o)=>s+Number(o.costo),0);
+    const total = totalPorEncargado(sede, nombre);
     const pct = commissions[sede+"|"+nombre] !== undefined ? commissions[sede+"|"+nombre] : 10;
     return s + total*pct/100;
   },0);
   return `
-    <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}</div>
+    <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}. El total de cada encargado se calcula sumando el precio de las prendas que se le asignaron dentro de cada orden.</div>
     <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total</th><th>%</th><th>Comisión</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" class="empty">Sin encargados.</td></tr>'}</tbody>
       <tfoot><tr style="font-weight:700;"><td colspan="4" data-label="">Total</td><td data-label="Total general">${fmtMoney(totalGeneral)}</td></tr></tfoot>
