@@ -37,11 +37,11 @@ let deferredPrompt = null;
 const UNIDADES = ["Unidades","Metros"];
 const METODOS = ["Efectivo","Tarjeta","Transferencia"];
 const MEDIDAS_CAMPOS = {
-  "Saco": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
+  "Saco": ["Pecho","Cintura","Base","Largo Talle","Largo Total","Hombro","Ancho Hombro","Ancho Espalda","Largo Manga","Cuello"],
   "Abrigo": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
-  "Chaleco": ["Espalda","Hombro","Pecho","Cintura","Largo"],
+  "Chaleco": ["Pecho","Cintura","1° Medida","2° Medida Ult Btn","Largo Talle","Largo Espalda","Largo Abertura"],
   "Camisa": ["Cuello","Bata","Manga","Pecho","Cintura","Base","Puño","Media Delantero","Talle","Largo"],
-  "Pantalón": ["Cintura","Cadera","Entrepierna","Largo","Rodilla"],
+  "Pantalón": ["Cintura","Base","Largo Total","Largo Sin Pretina","Entrepierna","Tiro","Rodilla","Bajos","Medida de Circunferencia"],
 };
 
 // Campos adicionales (no numéricos) por tipo de prenda, específicos de confección.
@@ -87,6 +87,7 @@ const MEDIDAS_EXTRA_CAMPOS = {
     {key:'notas', label:'Notas / observaciones', type:'textarea'},
   ],
   "Chaleco": [
+    {key:'corte', label:'Recto / Cruzado', type:'select', options:['Recto','Cruzado']},
     {key:'estampado', label:'Cuadros / Rayas / Lisa', type:'select', options:['Cuadros','Rayas','Lisa']},
     {key:'tela', label:'Tela', type:'text'},
     {key:'notas', label:'Notas / observaciones', type:'textarea'},
@@ -1237,13 +1238,13 @@ function renderMedidas(){
     <td data-label="Orden">${folioMedidaLabel(m.folio||0)}</td>
     <td data-label="Cliente">${m.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${m.celular}</span></td>
     <td data-label="Prenda">${m.tipo}</td>
-    <td data-label="Medidas (cm)">${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}cm`).join(' · ')}</td>
+    <td data-label="Medidas (pulg)">${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}"`).join(' · ')}</td>
     <td data-label="Actualizado">${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
     <td><button class="rowbtn" data-editmeas="${m.id}">Editar</button></td>
   </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin medidas.</td></tr>`;
   return `
     <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
-    <table class="orders"><thead><tr><th>Orden</th><th>Cliente</th><th>Prenda</th><th>Medidas (cm)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    <table class="orders"><thead><tr><th>Orden</th><th>Cliente</th><th>Prenda</th><th>Medidas (pulg)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
 }
 
 function attachMedidasEvents(){
@@ -1253,7 +1254,7 @@ function attachMedidasEvents(){
 }
 
 function renderMeasureFields(tipo, medidas){
-  return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (cm) <input type="number" class="measfield" data-campo="${campo}" value="${medidas[campo]??''}" min="0"></label>`).join('');
+  return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (pulg) <input type="number" class="measfield" data-campo="${campo}" value="${medidas[campo]??''}" min="0" step="0.25"></label>`).join('');
 }
 
 function renderExtraFields(tipo, extra){
@@ -1281,11 +1282,11 @@ function openMeasureModal(id){
       <label>Prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
       <label class="full">Notas <input type="text" id="m_notas" value="${m.notas||''}"></label>
     </div>
-    <h3>Medidas (cm)</h3>
+    <h3>Medidas (pulgadas)</h3>
     <div class="measure-layout"><div class="measure-fields" id="measureFields"></div><div class="measure-diagram" id="measureDiagram"></div></div>
     <h3>Detalles de confección</h3>
     <div class="formgrid" id="measureExtraFields"></div>
-    ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}cm`).join(', ')}</li>`).join('')}</ul></div>` : ''}
+    ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}"`).join(', ')}</li>`).join('')}</ul></div>` : ''}
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
       ${id ? `<button class="btn ghost" id="pdfMeasBtn" type="button">📄 Descargar PDF</button>` : ''}
@@ -1359,9 +1360,9 @@ function downloadMeasurementPDF(m){
   linea('Prenda', m.tipo);
   linea('Actualizado', new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX'));
   y += 3;
-  doc.setFont('helvetica','bold'); doc.text('Medidas (cm)', 14, y); y += 6;
+  doc.setFont('helvetica','bold'); doc.text('Medidas (pulgadas)', 14, y); y += 6;
   doc.setFont('helvetica','normal');
-  MEDIDAS_CAMPOS[m.tipo].forEach(campo => { linea(campo, `${m.medidas[campo] ?? '—'} cm`); });
+  MEDIDAS_CAMPOS[m.tipo].forEach(campo => { linea(campo, `${m.medidas[campo] ?? '—'}"`); });
   const extraConfig = MEDIDAS_EXTRA_CAMPOS[m.tipo] || [];
   if(extraConfig.length){
     y += 3;
