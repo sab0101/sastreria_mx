@@ -38,7 +38,7 @@ const UNIDADES = ["Unidades","Metros"];
 const METODOS = ["Efectivo","Tarjeta","Transferencia"];
 const MEDIDAS_CAMPOS = {
   "Saco": ["Pecho","Cintura","Base","Largo Talle","Largo Total","Hombro","Ancho Hombro","Ancho Espalda","Largo Manga","Cuello"],
-  "Abrigo": ["Espalda","Hombro","Manga","Pecho","Cintura","Cadera","Largo"],
+  "Abrigo": ["Pecho","Cintura","Base","Largo Talle","Largo Total","Hombro","Ancho Hombro","Ancho Espalda","Largo Manga","Cuello"],
   "Chaleco": ["Pecho","Cintura","1° Medida","2° Medida Ult Btn","Largo Talle","Largo Espalda","Largo Abertura"],
   "Camisa": ["Cuello","Bata","Manga","Pecho","Cintura","Base","Puño","Media Delantero","Talle","Largo"],
   "Pantalón": ["Cintura","Base","Largo Total","Largo Sin Pretina","Entrepierna","Tiro","Rodilla","Bajos","Medida de Circunferencia"],
@@ -83,6 +83,7 @@ const MEDIDAS_EXTRA_CAMPOS = {
     {key:'forro', label:'Forro', type:'text'},
     {key:'ojales', label:'Ojales', type:'text'},
     {key:'corte', label:'Recto / Cruzado', type:'select', options:['Recto','Cruzado']},
+    {key:'estampado', label:'Cuadros / Rayas / Lisa', type:'select', options:['Cuadros','Rayas','Lisa']},
     {key:'tela', label:'Tela', type:'text'},
     {key:'notas', label:'Notas / observaciones', type:'textarea'},
   ],
@@ -1234,23 +1235,24 @@ function openInventoryModal(id){
 function renderMedidas(){
   const searchTerm = (window.__measSearch || "").toLowerCase();
   let rows = measurements.filter(m => !searchTerm || m.cliente.toLowerCase().includes(searchTerm) || m.celular.includes(searchTerm)).sort((a,b)=>(b.folio||0)-(a.folio||0));
-  const rowsHtml = rows.map(m => `<tr>
-    <td data-label="Orden">${folioMedidaLabel(m.folio||0)}</td>
-    <td data-label="Cliente">${m.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${m.celular}</span></td>
-    <td data-label="Prenda">${m.tipo}</td>
-    <td data-label="Medidas (pulg)">${MEDIDAS_CAMPOS[m.tipo].map(c=>`${c}: ${m.medidas[c]??'—'}"`).join(' · ')}</td>
-    <td data-label="Actualizado">${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</td>
-    <td><button class="rowbtn" data-editmeas="${m.id}">Editar</button></td>
-  </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin medidas.</td></tr>`;
+  const itemsHtml = rows.map(m => `
+    <div class="measlistitem" data-editmeas="${m.id}">
+      <div class="mli-top">
+        <span class="mli-folio">${folioMedidaLabel(m.folio||0)}</span>
+        <span class="mli-tipo">${m.tipo}</span>
+      </div>
+      <div class="mli-cliente">${m.cliente}</div>
+      <div class="mli-sub">${m.celular} · Actualizado ${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</div>
+    </div>`).join('') || `<div class="empty">Sin medidas.</div>`;
   return `
     <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
-    <table class="orders"><thead><tr><th>Orden</th><th>Cliente</th><th>Prenda</th><th>Medidas (pulg)</th><th>Actualizado</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    <div class="measlist">${itemsHtml}</div>`;
 }
 
 function attachMedidasEvents(){
   document.getElementById('measSearch').addEventListener('input', e => { window.__measSearch = e.target.value; render(); });
   document.getElementById('newMeasBtn').addEventListener('click', () => openMeasureModal(null));
-  document.querySelectorAll('[data-editmeas]').forEach(b => b.addEventListener('click', () => openMeasureModal(b.dataset.editmeas)));
+  document.querySelectorAll('[data-editmeas]').forEach(el => el.addEventListener('click', () => openMeasureModal(el.dataset.editmeas)));
 }
 
 function renderMeasureFields(tipo, medidas){
