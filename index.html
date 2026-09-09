@@ -148,7 +148,9 @@
     .bar-fill.ontime{background:var(--green);} .bar-fill.late{background:var(--red);}
     .rank-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
     @media(max-width:820px){.rank-grid{grid-template-columns:1fr;}}
-    .measure-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+    .measure-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .measure-fields label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-soft);font-weight:600;}
+    .measure-fields label input{width:100%;font-family:inherit;}
     .measure-layout{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:start;}
     .measure-diagram{background:#FBF8F2;border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center;}
     .measure-diagram svg{max-width:100%;height:auto;}
