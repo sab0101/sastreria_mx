@@ -209,6 +209,18 @@ function renderAuthScreen(){
   }
 }
 
+async function isEmailAuthorized(email){
+  try{
+    const doc = await db.collection('config').doc('signupAllowlist').get();
+    if(!doc.exists) return false;
+    const emails = (doc.data().emails || []).map(e => String(e).trim().toLowerCase());
+    return emails.includes(email.trim().toLowerCase());
+  }catch(e){
+    console.error('No se pudo verificar la lista de correos autorizados:', e);
+    return false;
+  }
+}
+
 async function submitAuth(){
   const email = document.getElementById('authEmail').value.trim();
   const pass = document.getElementById('authPassword').value;
@@ -217,8 +229,18 @@ async function submitAuth(){
   if(!email || !pass){ errEl.textContent = 'Completa correo y contraseña.'; return; }
   try{
     if(authMode==='login'){ await auth.signInWithEmailAndPassword(email, pass); }
-    else { await auth.createUserWithEmailAndPassword(email, pass); }
-  }catch(e){ errEl.textContent = traducirErrorFirebase(e); }
+    else {
+      errEl.style.color = 'var(--ink-soft)'; errEl.textContent = 'Verificando autorización...';
+      const autorizado = await isEmailAuthorized(email);
+      if(!autorizado){
+        errEl.style.color = 'var(--red)';
+        errEl.textContent = 'Este correo no está autorizado para crear una cuenta. Contacta al administrador.';
+        return;
+      }
+      errEl.textContent = '';
+      await auth.createUserWithEmailAndPassword(email, pass);
+    }
+  }catch(e){ errEl.style.color = 'var(--red)'; errEl.textContent = traducirErrorFirebase(e); }
 }
 
 async function sendResetEmail(){
@@ -864,7 +886,7 @@ function renderPrendasRows(){
     el.addEventListener('change', e => { draftPrendas[e.target.dataset.pi][e.target.dataset.field] = e.target.value; });
   });
   document.querySelectorAll('#prendasList input[data-field="precio"]').forEach(el => {
-    el.addEventListener('input', e => { draftPrendas[e.target.dataset.pi].precio = Number(e.target.value)||0; recomputeCostoTotal(); });
+    el.addEventListener('input', e => { draftPrendas[e.target.dataset.pi].precio = Math.max(0, Number(e.target.value)||0); recomputeCostoTotal(); });
   });
   document.querySelectorAll('#prendasList input[type=file]').forEach(el => {
     el.addEventListener('change', async e => {
@@ -886,7 +908,7 @@ function renderPagosRows(){
       <button class="btn danger small" data-removepago="${i}" type="button">✕</button>
     </div></div>`).join('') || `<div class="note">Sin pagos.</div>`;
   document.querySelectorAll('#pagosList select, #pagosList input').forEach(el => {
-    el.addEventListener('change', e => { const f = e.target.dataset.field; draftPagos[e.target.dataset.gi][f] = f === 'monto' ? Number(e.target.value) : e.target.value; updateSubtotal(); });
+    el.addEventListener('change', e => { const f = e.target.dataset.field; draftPagos[e.target.dataset.gi][f] = f === 'monto' ? Math.max(0, Number(e.target.value)||0) : e.target.value; updateSubtotal(); });
   });
   document.querySelectorAll('[data-removepago]').forEach(b => b.addEventListener('click', () => { draftPagos.splice(Number(b.dataset.removepago), 1); renderPagosRows(); updateSubtotal(); }));
   updateSubtotal();
@@ -983,7 +1005,7 @@ async function saveOrderFromModal(){
     sede: document.getElementById('f_sede').value,
     encargado: document.getElementById('f_encargado').value,
     proceso: document.getElementById('f_proceso').value,
-    costo: Number(document.getElementById('f_costo').value),
+    costo: Math.max(0, Number(document.getElementById('f_costo').value)||0),
     entrego: document.getElementById('f_entrego').value.trim(),
     notas: document.getElementById('f_notas').value.trim(),
     prendas: draftPrendas, pagos: draftPagos,
@@ -1483,6 +1505,12 @@ function renderConfig(){
     <div class="autherror" id="cfgPasswordMsg"></div>
     <button class="btn ghost small" id="cfgChangePasswordBtn" type="button">Cambiar contraseña</button>
 
+    <h3 style="margin-top:30px;">✅ Correos autorizados para crear cuenta</h3>
+    <div class="note">Solo los correos de esta lista podrán usar "Crea tu cuenta" en la pantalla de acceso. Uno por línea.</div>
+    <textarea id="cfg_allowlist" rows="4">Cargando…</textarea>
+    <button class="btn ghost small" id="cfgSaveAllowlistBtn" type="button" style="margin-top:10px;">Guardar lista</button>
+    <div class="autherror" id="cfgAllowlistMsg"></div>
+
     <div class="note" style="margin-top:20px;border-color:var(--red);background:var(--red-bg);color:var(--red);">
       <b>⚠️ Zona de peligro</b> - Esto borra TODOS tus datos permanentemente.
     </div>
@@ -1582,6 +1610,35 @@ function attachConfigEvents(){
   document.getElementById('cfgChangeEmailBtn').addEventListener('click', changeEmailAccount);
   document.getElementById('cfgChangePasswordBtn').addEventListener('click', changePasswordAccount);
   document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
+
+  loadAllowlistIntoTextarea();
+  document.getElementById('cfgSaveAllowlistBtn').addEventListener('click', saveAllowlistFromTextarea);
+}
+
+async function loadAllowlistIntoTextarea(){
+  const ta = document.getElementById('cfg_allowlist');
+  try{
+    const doc = await db.collection('config').doc('signupAllowlist').get();
+    const emails = doc.exists ? (doc.data().emails || []) : [];
+    ta.value = emails.join('\n');
+  }catch(e){
+    ta.value = '';
+    console.error('No se pudo cargar la lista de correos autorizados:', e);
+  }
+}
+
+async function saveAllowlistFromTextarea(){
+  const errEl = document.getElementById('cfgAllowlistMsg');
+  errEl.style.color = 'var(--red)'; errEl.textContent = '';
+  const emails = document.getElementById('cfg_allowlist').value
+    .split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean);
+  try{
+    await db.collection('config').doc('signupAllowlist').set({ emails });
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = '✅ Lista actualizada.';
+  }catch(e){
+    errEl.textContent = 'Error al guardar: ' + e.message;
+  }
 }
 
 // ============================================================
