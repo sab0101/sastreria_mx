@@ -113,6 +113,11 @@ const CONTRATO_TEXT = "CONTRATO DE SERVICIO QUE CELEBRAN EL PRESTADOR DEL SERVIC
 // ============================================================
 // UTILIDADES
 // ============================================================
+// Escapa HTML para prevenir XSS almacenado: cualquier dato que un usuario haya escrito
+// (nombre de cliente, notas, etc.) pasa por aquí antes de insertarse en el HTML de la página.
+function esc(str){
+  return String(str ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
 function fmtMoney(n){ return "$" + (Number(n)||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function ticketLabel(n){ return "SAS-" + String(n).padStart(6,'0'); }
@@ -194,7 +199,7 @@ function renderAuthScreen(){
       <div class="autherror" id="authError"></div>
       <label>Correo <input type="email" id="authEmail" autocomplete="username"></label>
       <label>Contraseña <input type="password" id="authPassword" autocomplete="current-password"></label>
-      <button class="btn gold" id="authSubmitBtn" style="width:100%;">${authMode==='login'?'Iniciar sesión':'Crear cuenta'}</button>
+      <button class="btn gold" id="authSubmitBtn" class="w-100">${authMode==='login'?'Iniciar sesión':'Crear cuenta'}</button>
       <div class="authswitch">
         ${authMode==='login' ? `¿Empresa nueva? <a id="toSignup">Crea tu cuenta</a>` : `¿Ya tienes cuenta? <a id="toLogin">Inicia sesión</a>`}
       </div>
@@ -259,19 +264,19 @@ function renderOnboarding(){
   document.getElementById('root').innerHTML = `
     <div class="onboardwrap"><div class="onboardcard">
       <h1>Configura tu empresa</h1>
-      <p style="color:var(--ink-soft);">Esto solo lo haces una vez. Todo lo puedes editar después en "Configuración".</p>
+      <p class="text-soft">Esto solo lo haces una vez. Todo lo puedes editar después en "Configuración".</p>
       <div class="formgrid">
         <label class="full">Nombre de tu empresa/sastrería <input type="text" id="ob_nombre" placeholder="Ej. Casa Hernández Sastres"></label>
       </div>
-      <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Sucursales</h3>
+      <h3 class="section-label">Sucursales</h3>
       <div id="obSedesList"></div>
       <button class="btn ghost small" id="obAddSede" type="button">+ Agregar sucursal</button>
-      <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de prenda que manejas (uno por línea)</h3>
-      <textarea id="ob_tiposPrenda" rows="4" style="width:100%;padding:8px;" placeholder="Pantalón&#10;Saco&#10;Vestido&#10;Camisa"></textarea>
-      <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">Tipos de servicio que ofreces (uno por línea)</h3>
-      <textarea id="ob_tiposServicio" rows="4" style="width:100%;padding:8px;" placeholder="Confección nueva&#10;Ajuste / Arreglo&#10;Bastilla"></textarea>
-      <h3 style="font-family:'Fraunces',serif;color:var(--navy-deep);">PIN del dueño (para ver Comisiones)</h3>
-      <input type="text" id="ob_pin" placeholder="Ej. 1234" style="max-width:160px;">
+      <h3 class="section-label">Tipos de prenda que manejas (uno por línea)</h3>
+      <textarea id="ob_tiposPrenda" rows="4" class="w-100 pad-8" placeholder="Pantalón&#10;Saco&#10;Vestido&#10;Camisa"></textarea>
+      <h3 class="section-label">Tipos de servicio que ofreces (uno por línea)</h3>
+      <textarea id="ob_tiposServicio" rows="4" class="w-100 pad-8" placeholder="Confección nueva&#10;Ajuste / Arreglo&#10;Bastilla"></textarea>
+      <h3 class="section-label">PIN del dueño (para ver Comisiones)</h3>
+      <input type="text" id="ob_pin" placeholder="Ej. 1234" class="max-w-160">
       <div class="autherror" id="obError"></div>
       <div class="formfoot">
         <button class="btn ghost" id="obLogout" type="button">Cerrar sesión</button>
@@ -288,11 +293,11 @@ function renderObSedes(){
   document.getElementById('obSedesList').innerHTML = onboardSedes.map((s,i)=>`
     <div class="sedecard">
       <div class="fields">
-        <label>Nombre sucursal <input type="text" data-si="${i}" data-f="nombre" value="${s.nombre}"></label>
-        <label>Dirección <input type="text" data-si="${i}" data-f="direccion" value="${s.direccion}"></label>
+        <label>Nombre sucursal <input type="text" data-si="${i}" data-f="nombre" value="${esc(s.nombre)}"></label>
+        <label>Dirección <input type="text" data-si="${i}" data-f="direccion" value="${esc(s.direccion)}"></label>
         <button class="btn danger small" type="button" data-removesede="${i}">✕</button>
       </div>
-      <label>Encargados (uno por línea) <textarea rows="2" data-si="${i}" data-f="encargados" style="width:100%;">${(s.encargados||[]).join('\n')}</textarea></label>
+      <label>Encargados (uno por línea) <textarea rows="2" data-si="${i}" data-f="encargados" class="w-100">${(s.encargados||[]).join('\n')}</textarea></label>
     </div>`).join('');
   document.querySelectorAll('#obSedesList [data-f]').forEach(el=>{
     el.addEventListener('change', e=>{
@@ -414,14 +419,14 @@ function renderRoot(){
     <div id="app">
       <div class="mobile-topbar">
         <button class="hamburger" id="hamburgerBtn" aria-label="Abrir menú">☰</button>
-        <div class="mtb-brand">✂️ ${companyConfig.nombreEmpresa}</div>
+        <div class="mtb-brand">✂️ ${esc(companyConfig.nombreEmpresa)}</div>
       </div>
       <div class="drawer-overlay" id="drawerOverlay"></div>
       <div class="sidebar" id="sidebarMain">
         <div class="brand">
           <span class="icon">✂️</span>
           <div class="txt">
-            <div class="mark">${companyConfig.nombreEmpresa}</div>
+            <div class="mark">${esc(companyConfig.nombreEmpresa)}</div>
             <div class="sub">Seguimiento interno</div>
           </div>
           <button class="sidebar-close" id="sidebarCloseBtn" aria-label="Cerrar menú">✕</button>
@@ -432,18 +437,18 @@ function renderRoot(){
           <button class="navbtn" data-view="medidas"><span class="dot"></span> Medidas</button>
           <button class="navbtn" data-view="administracion"><span class="dot"></span> 🛡️ Administración</button>
         </nav>
-        <div style="border-top:1px dashed #3a4a5f;padding-top:12px;">
-          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:#B9AF9C;margin-bottom:6px;">Sesión activa</div>
-          <select id="sessionSede" style="width:100%;font-size:12px;padding:6px 8px;"><option value="">Todas las sucursales (dueño)</option></select>
-          <div style="font-size:10px;color:#7C7261;margin-top:4px;">Filtra Órdenes a tu sucursal.</div>
+        <div class="sidebar-block">
+          <div class="sidebar-label">Sesión activa</div>
+          <select id="sessionSede" class="session-select"><option value="">Todas las sucursales (dueño)</option></select>
+          <div class="hint-xs">Filtra Órdenes a tu sucursal.</div>
         </div>
-        <div style="border-top:1px dashed #3a4a5f;padding-top:12px;display:flex;flex-direction:column;gap:6px;">
-          <button class="btn ghost small" id="backupBtn" type="button" style="width:100%;color:#D8CFBE;border-color:#3a4a5f;">💾 Respaldo (JSON)</button>
-          <button class="btn ghost small" id="exportBtn" type="button" style="width:100%;color:#D8CFBE;border-color:#3a4a5f;">📊 Exportar Órdenes (Excel)</button>
+        <div class="sidebar-block-actions">
+          <button class="btn ghost small sidebar-btn-full" id="backupBtn" type="button">💾 Respaldo (JSON)</button>
+          <button class="btn ghost small sidebar-btn-full" id="exportBtn" type="button">📊 Exportar Órdenes (Excel)</button>
         </div>
         <div class="sidebar-foot">
           ${currentUser.email}<br>
-          <a id="logoutLink" style="color:#D8CFBE;cursor:pointer;text-decoration:underline;">Cerrar sesión</a>
+          <a id="logoutLink" class="link-sidebar">Cerrar sesión</a>
         </div>
       </div>
       <main>
@@ -540,11 +545,11 @@ function render(){
 // ============================================================
 function renderOwnerLock(){
   return `<div class="lock"><h2>🛡️ Administración</h2>
-    <p style="color:var(--ink-soft);font-size:13px;">Dashboard, Comisiones y Configuración están protegidos. Escribe el PIN del dueño para entrar.</p>
-    <input type="password" id="ownerPinInput" placeholder="PIN del dueño" style="width:100%;margin:14px 0;">
-    <div id="ownerLockError" style="color:var(--red);font-size:12px;height:16px;"></div>
-    <button class="btn gold" id="ownerLockBtn" style="width:100%;">Entrar</button>
-    <p style="color:var(--ink-soft);font-size:11px;margin-top:14px;"><a id="forgotPinLink" style="color:var(--navy);cursor:pointer;text-decoration:underline;">¿Olvidaste tu PIN?</a></p>
+    <p class="text-soft-md">Dashboard, Comisiones y Configuración están protegidos. Escribe el PIN del dueño para entrar.</p>
+    <input type="password" id="ownerPinInput" placeholder="PIN del dueño" class="w-full-spaced">
+    <div id="ownerLockError" class="pin-error"></div>
+    <button class="btn gold" id="ownerLockBtn" class="w-100">Entrar</button>
+    <p class="hint-below"><a id="forgotPinLink" class="link-navy">¿Olvidaste tu PIN?</a></p>
   </div>`;
 }
 
@@ -561,7 +566,7 @@ function attachOwnerLockEvents(){
 function openForgotPinModal(){
   document.getElementById('modalBox').innerHTML = `
     <h2>¿Olvidaste tu PIN?</h2>
-    <p style="color:var(--ink-soft);font-size:13px;">Para restablecerlo, confirma la contraseña de la cuenta con la que iniciaste sesión (<b>${currentUser.email}</b>) y elige un PIN nuevo.</p>
+    <p class="text-soft-md">Para restablecerlo, confirma la contraseña de la cuenta con la que iniciaste sesión (<b>${currentUser.email}</b>) y elige un PIN nuevo.</p>
     <div class="formgrid">
       <label class="full">Contraseña de tu cuenta <input type="password" id="fp_password"></label>
       <label class="full">Nuevo PIN <input type="text" id="fp_newpin" placeholder="Ej. 1234"></label>
@@ -595,7 +600,7 @@ function renderAdministracion(){
   return `
     ${ownerSessionBar()}
     ${backupReminderBanner()}
-    <div class="filters" style="margin-bottom:20px;">
+    <div class="filters mb-lg">
       <button class="btn ${adminTab==='dashboard'?'gold':'ghost'} small" data-admintab="dashboard" type="button">Dashboard</button>
       <button class="btn ${adminTab==='comisiones'?'gold':'ghost'} small" data-admintab="comisiones" type="button">Comisiones</button>
       <button class="btn ${adminTab==='config'?'gold':'ghost'} small" data-admintab="config" type="button">Configuración</button>
@@ -607,20 +612,20 @@ function renderAdministracion(){
 function backupReminderBanner(){
   const days = daysSinceBackup();
   if(days === null){
-    return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">💾 Aún no has hecho ningún respaldo (JSON). Te recomendamos hacer el primero desde el botón "Respaldo (JSON)" del menú.</div>`;
+    return `<div class="note note-amber">💾 Aún no has hecho ningún respaldo (JSON). Te recomendamos hacer el primero desde el botón "Respaldo (JSON)" del menú.</div>`;
   }
   if(days >= 14){
-    return `<div class="note" style="background:var(--red-bg);border-color:var(--red);color:var(--red);">💾 Llevas <b>${days} días</b> sin hacer un respaldo (JSON). Te recomendamos hacer uno cuanto antes.</div>`;
+    return `<div class="note note-red">💾 Llevas <b>${days} días</b> sin hacer un respaldo (JSON). Te recomendamos hacer uno cuanto antes.</div>`;
   }
   if(days >= 7){
-    return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">💾 Han pasado <b>${days} días</b> desde tu último respaldo (JSON). Considera hacer uno pronto.</div>`;
+    return `<div class="note note-amber">💾 Han pasado <b>${days} días</b> desde tu último respaldo (JSON). Considera hacer uno pronto.</div>`;
   }
   return '';
 }
 
 function ownerSessionBar(){
-  return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-    <button class="btn ghost small" id="ownerLockBackBtn" type="button" style="border-color:var(--red);color:var(--red);">🔒 Bloquear esta sección</button>
+  return `<div class="row-end">
+    <button class="btn ghost small" id="ownerLockBackBtn" type="button" class="border-danger">🔒 Bloquear esta sección</button>
   </div>`;
 }
 
@@ -649,9 +654,9 @@ async function attachAdministracionEvents(){
 function renderAuditoriaContent(){
   const rows = (window.__auditLog || []).map(a => `<tr>
     <td data-label="Fecha">${new Date(a.fecha).toLocaleString('es-MX')}</td>
-    <td data-label="Usuario">${a.usuario}</td>
-    <td data-label="Acción">${a.accion}</td>
-    <td data-label="Detalle">${a.detalle||''}</td>
+    <td data-label="Usuario">${esc(a.usuario)}</td>
+    <td data-label="Acción">${esc(a.accion)}</td>
+    <td data-label="Detalle">${esc(a.detalle||'')}</td>
   </tr>`).join('') || '<tr><td colspan="4" class="empty">Sin actividad registrada todavía.</td></tr>';
   return `
     <div class="note">Últimas ${(window.__auditLog||[]).length} acciones.</div>
@@ -675,7 +680,7 @@ function renderCorteCaja(){
   pagosDia.forEach(p => { porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + Number(p.monto||0); });
   const total = Object.values(porMetodo).reduce((a,b)=>a+b, 0);
   return `
-    <div class="kpis" style="margin-bottom:10px;">
+    <div class="kpis mb-sm">
       ${METODOS.map(m=>`<div class="kpi"><div class="num">${fmtMoney(porMetodo[m])}</div><div class="lbl">${m}</div></div>`).join('')}
       <div class="kpi green"><div class="num">${fmtMoney(total)}</div><div class="lbl">Total del día</div></div>
     </div>
@@ -753,18 +758,18 @@ function renderDashboard(){
     <div class="barchart">
       <div class="bar-row"><div class="label">A tiempo</div><div class="bar-track"><div class="bar-fill ontime" style="width:${(onTimeF/totalF*100).toFixed(0)}%">${onTimeF}</div></div></div>
       <div class="bar-row"><div class="label">Atrasadas</div><div class="bar-track"><div class="bar-fill late" style="width:${(lateF/totalF*100).toFixed(0)}%">${lateF}</div></div></div>
-      ${terminadosF.length===0 ? '<div class="note" style="margin:0;">No hay órdenes Terminadas con estos filtros.</div>' : `<div class="note" style="margin:8px 0 0;">${terminadosF.length} orden(es) entregada(s).</div>`}
+      ${terminadosF.length===0 ? '<div class="note m-0">No hay órdenes Terminadas con estos filtros.</div>' : `<div class="note mt-tiny">${terminadosF.length} orden(es) entregada(s).</div>`}
     </div>
     <div class="rank-grid">
       <div>
-        <h2 class="section-title" style="margin-top:0;">Ranking de atrasos</h2>
+        <h2 class="section-title mt-0">Ranking de atrasos</h2>
         <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Atrasos</th><th>Total</th></tr></thead>
-        <tbody>${atrasoRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Atrasos"><b style="color:var(--red);">${a.atrasos}</b></td><td data-label="Total">${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">🎉 Sin atrasos</td></tr>'}</tbody></table>
+        <tbody>${atrasoRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Atrasos"><b class="text-red">${a.atrasos}</b></td><td data-label="Total">${a.total}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">🎉 Sin atrasos</td></tr>'}</tbody></table>
       </div>
       <div>
-        <h2 class="section-title" style="margin-top:0;">Ranking de ventas</h2>
+        <h2 class="section-title mt-0">Ranking de ventas</h2>
         <table class="orders"><thead><tr><th>Encargado</th><th>Sucursal</th><th>Vendido</th></tr></thead>
-        <tbody>${ventaRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Vendido"><b style="color:var(--navy);">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table>
+        <tbody>${ventaRanking.map(a=>`<tr><td data-label="Encargado">${a.encargado}</td><td data-label="Sucursal">${a.sede}</td><td data-label="Vendido"><b class="text-navy">${fmtMoney(a.total)}</b></td></tr>`).join('') || '<tr><td colspan="3" class="empty">Sin datos</td></tr>'}</tbody></table>
       </div>
     </div>`;
 }
@@ -787,7 +792,7 @@ function renderRecordatorioBanner(){
   const partes = [];
   if(hoy>0) partes.push(`${hoy} entrega(s) para HOY`);
   if(manana>0) partes.push(`${manana} para MAÑANA`);
-  return `<div class="note" style="background:var(--amber-bg);border-color:var(--amber);color:#7F5A00;">⏰ ${partes.join(' y ')}</div>`;
+  return `<div class="note note-amber">⏰ ${partes.join(' y ')}</div>`;
 }
 
 function renderOrdenes(){
@@ -810,14 +815,14 @@ function renderOrdenes(){
     const pend = saldo(o);
     const prendasResumen = (o.prendas||[]).map(p=>p.tipo).join(", ") || "—";
     const thumbs = (o.prendas||[]).filter(p=>p.foto).slice(0,3).map(p=>`<img src="${p.foto}">`).join('');
-    return `<tr class="${alert.cls==='late' ? 'overdue':''}" data-view="${o.id}" style="cursor:pointer;">
+    return `<tr class="${alert.cls==='late' ? 'overdue':''}" data-view="${o.id}" class="clickable">
       <td class="ticket" data-label="Ticket">${ticketLabel(o.ticket)}</td>
-      <td data-label="Cliente">${o.cliente}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.celular}</span></td>
+      <td data-label="Cliente">${esc(o.cliente)}<br><span class="text-soft-sm">${esc(o.celular)}</span></td>
       <td data-label="Prendas">${prendasResumen}<div class="thumbs">${thumbs}</div></td>
-      <td data-label="Sede/Encargado">${o.sede}<br><span style="color:var(--ink-soft);font-size:11.5px;">${o.encargado}</span></td>
+      <td data-label="Sede/Encargado">${o.sede}<br><span class="text-soft-sm">${o.encargado}</span></td>
       <td data-label="Registro/Entrega">Reg: ${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}<br>Entr: ${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td>
       <td data-label="Proceso"><span class="procbadge">${o.proceso}</span></td>
-      <td data-label="Costo/Saldo">${fmtMoney(o.costo)}<br><span style="color:var(--ink-soft);font-size:11.5px;">saldo ${fmtMoney(pend)}</span></td>
+      <td data-label="Costo/Saldo">${fmtMoney(o.costo)}<br><span class="text-soft-sm">saldo ${fmtMoney(pend)}</span></td>
       <td data-label="Alerta">${verPapelera ? '<span class="badge done">Archivado</span>' : `<span class="badge ${alert.cls}">${alert.label}</span>`}</td>
       <td><button class="rowbtn" data-edit="${o.id}">${verPapelera?'Ver':'Editar'}</button></td>
     </tr>`;
@@ -825,7 +830,7 @@ function renderOrdenes(){
 
   const procOptions = ['<option value="">Todos los procesos</option>', ...["Pendiente","Haciéndose","Terminado"].map(p=>`<option value="${p}" ${p===procFilter?'selected':''}>${p}</option>`)].join('');
   const sedeControl = sesion
-    ? `<span class="procbadge" style="padding:8px 12px;">📍 ${sesion}</span>`
+    ? `<span class="procbadge pad-btn">📍 ${sesion}</span>`
     : `<select id="sedeFilter"><option value="">Todas las sucursales</option>${sedeNames().map(s=>`<option value="${s}" ${s===sedeFilter?'selected':''}>${s}</option>`).join('')}</select>`;
 
   if(sedeNames().length===0) return `<div class="note">Primero agrega al menos una sucursal en Configuración.</div>`;
@@ -835,10 +840,10 @@ function renderOrdenes(){
   return `
     ${verPapelera ? '' : renderRecordatorioBanner()}
     <div class="filters">
-      <input type="text" id="searchInput" placeholder="Buscar..." value="${window.__search||''}" style="min-width:220px;">
+      <input type="text" id="searchInput" placeholder="Buscar..." value="${window.__search||''}" class="min-w-220">
       ${sedeControl}
       <select id="procFilter">${procOptions}</select>
-      <span style="flex:1;"></span>
+      <span class="flex-1"></span>
       <button class="btn ghost small" id="papeleraBtn" type="button">${verPapelera ? '⬅️ Volver' : `🗑️ Papelera (${archivadosCount})`}</button>
       ${verPapelera ? '' : '<button class="btn gold" id="newOrderBtn">➕ Nueva orden</button>'}
     </div>
@@ -875,9 +880,9 @@ function renderPrendasRows(){
         <label>Tipo <select data-pi="${i}" data-field="tipo">${(companyConfig.tiposPrenda||[]).map(t=>`<option ${t===p.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
         <label>Servicio <select data-pi="${i}" data-field="servicio">${(companyConfig.tiposServicio||[]).map(t=>`<option ${t===p.servicio?'selected':''}>${t}</option>`).join('')}</select></label>
         <label>Encargado <select data-pi="${i}" data-field="encargado">${encargadosSede.map(n=>`<option ${n===p.encargado?'selected':''}>${n}</option>`).join('')}</select></label>
-        <label>Detalle <input type="text" data-pi="${i}" data-field="nota" value="${p.nota||''}"></label>
+        <label>Detalle <input type="text" data-pi="${i}" data-field="nota" value="${esc(p.nota||'')}"></label>
         <label>Precio <input type="number" data-pi="${i}" data-field="precio" value="${p.precio||0}" min="0"></label>
-        <label>Foto ${p.foto?`<img src="${p.foto}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">`:''}<input type="file" accept="image/*" capture="environment" data-pi="${i}" data-field="foto"></label>
+        <label>Foto ${p.foto?`<img src="${p.foto}" class="thumb-preview">`:''}<input type="file" accept="image/*" capture="environment" data-pi="${i}" data-field="foto"></label>
         <button class="btn danger small" data-removeprenda="${i}" type="button">✕</button>
       </div>
     </div>`).join('') || `<div class="note">Sin prendas.</div>`;
@@ -901,7 +906,7 @@ function renderPrendasRows(){
 
 function renderPagosRows(){
   document.getElementById('pagosList').innerHTML = draftPagos.map((p, i) => `
-    <div class="subrow"><div class="fields" style="grid-template-columns:1fr 1fr 1fr auto;">
+    <div class="subrow"><div class="fields fields-payrow">
       <label>Fecha <input type="date" data-gi="${i}" data-field="fecha" value="${p.fecha}"></label>
       <label>Monto <input type="number" data-gi="${i}" data-field="monto" value="${p.monto}" min="0"></label>
       <label>Método <select data-gi="${i}" data-field="metodo">${METODOS.map(m=>`<option ${m===p.metodo?'selected':''}>${m}</option>`).join('')}</select></label>
@@ -943,15 +948,15 @@ function openOrderModal(id){
     <h2>${id ? `Editar ${ticketLabel(o.ticket)}` : `Nueva orden (${ticketLabel(nextTicket)})`}</h2>
     <div class="formgrid">
       <label>Registro <input type="date" id="f_fechaRecibido" value="${o.fechaRecibido}"></label>
-      <label>Cliente <input type="text" id="f_cliente" value="${o.cliente}"></label>
-      <label>Celular <input type="tel" id="f_celular" value="${o.celular}"></label>
+      <label>Cliente <input type="text" id="f_cliente" value="${esc(o.cliente)}"></label>
+      <label>Celular <input type="tel" id="f_celular" value="${esc(o.celular)}"></label>
       <label>Entrega <input type="date" id="f_fechaEntrega" value="${o.fechaEntrega}"></label>
       <label>Sede <select id="f_sede">${sedeNames().map(s=>`<option ${s===o.sede?'selected':''}>${s}</option>`).join('')}</select></label>
       <label>Encargado <select id="f_encargado"></select></label>
       <label>Proceso <select id="f_proceso">${["Pendiente","Haciéndose","Terminado"].map(p=>`<option ${p===o.proceso?'selected':''}>${p}</option>`).join('')}</select></label>
       <label>Costo total <input type="number" id="f_costo" value="${o.costo}" readonly></label>
-      <label>Entregó <input type="text" id="f_entrego" value="${o.entrego}"></label>
-      <label class="full">Notas <input type="text" id="f_notas" value="${o.notas||''}"></label>
+      <label>Entregó <input type="text" id="f_entrego" value="${esc(o.entrego)}"></label>
+      <label class="full">Notas <input type="text" id="f_notas" value="${esc(o.notas||'')}"></label>
     </div>
     <h3>Prendas</h3>
     <div id="prendasList"></div>
@@ -978,7 +983,7 @@ function openOrderModal(id){
   const hist = orders.filter(x => x.celular === o.celular && x.id !== id);
   const historyBox = document.getElementById('historyBox');
   if(o.celular && hist.length){
-    historyBox.innerHTML = `<div class="historybox"><b>Historial</b> (${o.celular}) — ${hist.length} orden(es)
+    historyBox.innerHTML = `<div class="historybox"><b>Historial</b> (${esc(o.celular)}) — ${hist.length} orden(es)
       <ul>${hist.slice(0,5).map(x=>`<li>${ticketLabel(x.ticket)} — ${fmtMoney(x.costo)}</li>`).join('')}</ul></div>`;
   }
 
@@ -1059,7 +1064,7 @@ function buildListoWhatsAppMsg(o){
 }
 
 function receiptLinesHtml(o){
-  return (o.prendas||[]).map(p => `<div class="rline"><span>${p.tipo} - ${p.servicio}${p.nota?` - ${p.nota}`:''}</span><span>${fmtMoney(p.precio||0)}</span></div>`).join('') || '<div class="rline"><span>(sin prendas)</span><span></span></div>';
+  return (o.prendas||[]).map(p => `<div class="rline"><span>${esc(p.tipo)} - ${esc(p.servicio)}${p.nota?` - ${esc(p.nota)}`:''}</span><span>${fmtMoney(p.precio||0)}</span></div>`).join('') || '<div class="rline"><span>(sin prendas)</span><span></span></div>';
 }
 
 function openDetailModal(id){
@@ -1068,21 +1073,21 @@ function openDetailModal(id){
   document.getElementById('modalBox').innerHTML = `
     <h2>Detalle ${ticketLabel(o.ticket)} <span class="badge ${alert.cls}">${alert.label}</span></h2>
     <div class="receipt">
-      <div class="rtitle">${companyConfig.nombreEmpresa}</div>
-      <div class="rsmall">${sedeInfo(o.sede).direccion || o.sede}</div>
+      <div class="rtitle">${esc(companyConfig.nombreEmpresa)}</div>
+      <div class="rsmall">${esc(sedeInfo(o.sede).direccion || o.sede)}</div>
       <div class="rdiv"></div>
       <div class="rline"><span>Ticket</span><span>${ticketLabel(o.ticket)}</span></div>
       <div class="rline"><span>Registro</span><span>${new Date(o.fechaRecibido+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
       <div class="rline"><span>Entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
-      <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
-      <div class="rline"><span>Celular</span><span>${o.celular}</span></div>
-      <div class="rline"><span>Sede / Encargado</span><span>${o.sede} / ${o.encargado}</span></div>
-      <div class="rline"><span>Proceso</span><span>${o.proceso}</span></div>
+      <div class="rline"><span>Cliente</span><span>${esc(o.cliente)}</span></div>
+      <div class="rline"><span>Celular</span><span>${esc(o.celular)}</span></div>
+      <div class="rline"><span>Sede / Encargado</span><span>${esc(o.sede)} / ${esc(o.encargado)}</span></div>
+      <div class="rline"><span>Proceso</span><span>${esc(o.proceso)}</span></div>
       <div class="rdiv"></div>${receiptLinesHtml(o)}<div class="rdiv"></div>
       <div class="rline"><b>Costo total</b><b>${fmtMoney(o.costo)}</b></div>
       <div class="rline"><span>Abonado</span><span>${fmtMoney(totalAbonado(o))}</span></div>
       <div class="rline"><b>Saldo</b><b>${fmtMoney(saldo(o))}</b></div>
-      ${o.notas ? `<div class="rline"><span>Notas</span><span>${o.notas}</span></div>` : ''}
+      ${o.notas ? `<div class="rline"><span>Notas</span><span>${esc(o.notas)}</span></div>` : ''}
     </div>
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cerrar</button>
@@ -1090,12 +1095,14 @@ function openDetailModal(id){
       <button class="btn ghost" id="pdfOrderBtn" type="button">📄 PDF + contrato</button>
       <button class="btn ghost" id="waBoletaBtn" type="button">📱 Boleta WhatsApp</button>
       ${o.proceso === 'Terminado' ? `<button class="btn ghost" id="waListoBtn" type="button">📱 Avisar listo</button>` : ''}
+      <button class="btn ghost border-danger" id="deleteOrderBtn" type="button">🗑️ Eliminar</button>
       <button class="btn gold" id="editFromDetailBtn" type="button">Editar</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('editFromDetailBtn').addEventListener('click', () => openOrderModal(o.id));
   document.getElementById('printClienteBtn').addEventListener('click', () => printTicket(o, 'cliente'));
   document.getElementById('pdfOrderBtn').addEventListener('click', () => downloadOrderPDF(o));
+  document.getElementById('deleteOrderBtn').addEventListener('click', () => deleteOrderWithPin(o.id));
   document.getElementById('waBoletaBtn').addEventListener('click', () => {
     if(!o.celular){ alert('Esta orden no tiene celular registrado.'); return; }
     window.open(waLink(o.celular, buildBoletaWhatsAppMsg(o)), '_blank');
@@ -1153,12 +1160,12 @@ function downloadOrderPDF(o){
 
 function printTicket(o, tipo){
   const area = document.getElementById('printArea');
-  area.innerHTML = `<div class="receipt" style="border:none;background:#fff;padding:0;">
-    <div class="rtitle">${companyConfig.nombreEmpresa}</div>
-    <div class="rsmall">${sedeInfo(o.sede).direccion || o.sede}</div>
+  area.innerHTML = `<div class="receipt receipt-print">
+    <div class="rtitle">${esc(companyConfig.nombreEmpresa)}</div>
+    <div class="rsmall">${esc(sedeInfo(o.sede).direccion || o.sede)}</div>
     <div class="rdiv"></div>
     <div class="rline"><b>TICKET</b><b>${ticketLabel(o.ticket)}</b></div>
-    <div class="rline"><span>Cliente</span><span>${o.cliente}</span></div>
+    <div class="rline"><span>Cliente</span><span>${esc(o.cliente)}</span></div>
     <div class="rline"><span>Entrega</span><span>${new Date(o.fechaEntrega+"T00:00:00").toLocaleDateString('es-MX')}</span></div>
     <div class="rdiv"></div>${receiptLinesHtml(o)}<div class="rdiv"></div>
     <div class="rline"><b>TOTAL</b><b>${fmtMoney(o.costo)}</b></div>
@@ -1178,6 +1185,24 @@ function toggleArchiveOrder(o, archivar){
   });
 }
 
+async function deleteOrderWithPin(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const pin = prompt(`Escribe el PIN de administrador para eliminar permanentemente la orden ${ticketLabel(o.ticket)} de "${o.cliente}":`);
+  if(pin === null) return;
+  if(pin !== (companyConfig.ownerPin || "0000")){ alert("PIN incorrecto. No se eliminó nada."); return; }
+  if(!confirm(`¿Seguro que quieres eliminar permanentemente ${ticketLabel(o.ticket)} de ${o.cliente}? Esta acción no se puede deshacer.`)) return;
+  try{
+    await db.collection('companies').doc(companyId).collection('orders').doc(id).delete();
+    orders = orders.filter(x=>x.id!==id);
+    await logAudit('Eliminar orden', `${ticketLabel(o.ticket)} — ${o.cliente}`);
+    document.getElementById('overlay').classList.remove('show');
+    render();
+  }catch(e){
+    alert('Error al eliminar: ' + e.message);
+  }
+}
+
 // ============================================================
 // INVENTARIO
 // ============================================================
@@ -1190,7 +1215,7 @@ function renderInventario(){
     const stockBajo = Number(x.existenciaActual) < Number(x.stockMinimo||0) && Number(x.stockMinimo||0) > 0;
     return `<tr class="${stockBajo?'overdue':''}">
       <td data-label="Fecha">${new Date(x.fecha+"T00:00:00").toLocaleDateString('es-MX')}</td>
-      <td data-label="Sede">${x.sede}</td><td data-label="Tipo">${x.tipo}</td><td data-label="Descripción">${x.descripcion}</td>
+      <td data-label="Sede">${esc(x.sede)}</td><td data-label="Tipo">${esc(x.tipo)}</td><td data-label="Descripción">${esc(x.descripcion)}</td>
       <td data-label="Cantidad">${x.cantidad} ${x.unidad}</td>
       <td data-label="Existencia">${x.existenciaActual!==undefined ? `${x.existenciaActual} ${x.unidad}${stockBajo?' ⚠️':''}` : '—'}</td>
       <td data-label="Proveedor">${x.proveedor||'—'}</td>
@@ -1200,11 +1225,11 @@ function renderInventario(){
   const sedeOptions = ['<option value="">Todas</option>', ...sedeNames().map(s=>`<option value="${s}" ${s===sedeFilter?'selected':''}>${s}</option>`)].join('');
   const tipoOptions = ['<option value="">Todos</option>', ...(companyConfig.tiposInventario||[]).map(t=>`<option value="${t}" ${t===tipoFilter?'selected':''}>${t}</option>`)].join('');
   return `
-    ${bajos.length ? `<div class="note" style="background:var(--red-bg);border-color:var(--red);color:var(--red);">⚠️ ${bajos.length} material(es) por debajo del stock mínimo</div>` : ''}
+    ${bajos.length ? `<div class="note note-red">⚠️ ${bajos.length} material(es) por debajo del stock mínimo</div>` : ''}
     <div class="filters">
       <select id="invSede">${sedeOptions}</select>
       <select id="invTipo">${tipoOptions}</select>
-      <span style="flex:1;"></span>
+      <span class="flex-1"></span>
       <button class="btn gold" id="newInvBtn">➕ Nuevo material</button>
     </div>
     <table class="orders"><thead><tr><th>Fecha</th><th>Sede</th><th>Tipo</th><th>Descripción</th><th>Cantidad</th><th>Existencia</th><th>Proveedor</th><th></th></tr></thead><tbody>${rowsHtml}</tbody></table>`;
@@ -1225,7 +1250,7 @@ function openInventoryModal(id){
       <label>Fecha <input type="date" id="i_fecha" value="${it.fecha}"></label>
       <label>Sede <select id="i_sede">${sedeNames().map(s=>`<option ${s===it.sede?'selected':''}>${s}</option>`).join('')}</select></label>
       <label>Tipo <select id="i_tipo">${(companyConfig.tiposInventario||[]).map(t=>`<option ${t===it.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
-      <label>Descripción <input type="text" id="i_descripcion" value="${it.descripcion}"></label>
+      <label>Descripción <input type="text" id="i_descripcion" value="${esc(it.descripcion)}"></label>
       <label>Cantidad <input type="number" id="i_cantidad" value="${it.cantidad}" min="0"></label>
       <label>Unidad <select id="i_unidad">${UNIDADES.map(u=>`<option ${u===it.unidad?'selected':''}>${u}</option>`).join('')}</select></label>
       <label>Proveedor <input type="text" id="i_proveedor" value="${it.proveedor||''}"></label>
@@ -1263,11 +1288,15 @@ function renderMedidas(){
         <span class="mli-folio">${folioMedidaLabel(m.folio||0)}</span>
         <span class="mli-tipo">${m.tipo}</span>
       </div>
-      <div class="mli-cliente">${m.cliente}</div>
-      <div class="mli-sub">${m.celular} · Actualizado ${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</div>
+      <div class="mli-cliente">${esc(m.cliente)}</div>
+      <div class="mli-sub">${esc(m.celular)} · Actualizado ${new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX')}</div>
+      <div class="mli-actions">
+        <button class="rowbtn" data-pdfmeas="${m.id}">📄 PDF</button>
+        <button class="rowbtn text-danger" data-delmeas="${m.id}">🗑️ Eliminar</button>
+      </div>
     </div>`).join('') || `<div class="empty">Sin medidas.</div>`;
   return `
-    <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" style="min-width:240px;"><span style="flex:1;"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
+    <div class="filters"><input type="text" id="measSearch" placeholder="Buscar..." value="${window.__measSearch||''}" class="min-w-240"><span class="flex-1"></span><button class="btn gold" id="newMeasBtn">➕ Nuevas medidas</button></div>
     <div class="measlist">${itemsHtml}</div>`;
 }
 
@@ -1275,6 +1304,15 @@ function attachMedidasEvents(){
   document.getElementById('measSearch').addEventListener('input', e => { window.__measSearch = e.target.value; render(); });
   document.getElementById('newMeasBtn').addEventListener('click', () => openMeasureModal(null));
   document.querySelectorAll('[data-editmeas]').forEach(el => el.addEventListener('click', () => openMeasureModal(el.dataset.editmeas)));
+  document.querySelectorAll('[data-pdfmeas]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation();
+    const m = measurements.find(x=>x.id===el.dataset.pdfmeas);
+    if(m) downloadMeasurementPDF(m);
+  }));
+  document.querySelectorAll('[data-delmeas]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation();
+    deleteMeasurementWithPin(el.dataset.delmeas);
+  }));
 }
 
 function renderMeasureFields(tipo, medidas){
@@ -1289,9 +1327,9 @@ function renderExtraFields(tipo, extra){
       return `<label>${f.label} <select class="measextra" data-key="${f.key}"><option value="">—</option>${f.options.map(o=>`<option ${String(val)===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
     }
     if(f.type === 'textarea'){
-      return `<label class="full">${f.label} <textarea class="measextra" data-key="${f.key}" rows="2" style="width:100%;">${val}</textarea></label>`;
+      return `<label class="full">${f.label} <textarea class="measextra" data-key="${f.key}" rows="2" class="w-100">${esc(val)}</textarea></label>`;
     }
-    return `<label>${f.label} <input type="${f.type}" class="measextra" data-key="${f.key}" value="${val}"></label>`;
+    return `<label>${f.label} <input type="${f.type}" class="measextra" data-key="${f.key}" value="${esc(val)}"></label>`;
   }).join('');
 }
 
@@ -1301,10 +1339,10 @@ function openMeasureModal(id){
   document.getElementById('modalBox').innerHTML = `
     <h2>${id ? `Editar medidas — ${folioMedidaLabel(m.folio||0)}` : `Nuevas medidas (${folioMedidaLabel(m.folio)})`}</h2>
     <div class="formgrid">
-      <label>Cliente <input type="text" id="m_cliente" value="${m.cliente}"></label>
-      <label>Celular <input type="tel" id="m_celular" value="${m.celular}"></label>
+      <label>Cliente <input type="text" id="m_cliente" value="${esc(m.cliente)}"></label>
+      <label>Celular <input type="tel" id="m_celular" value="${esc(m.celular)}"></label>
       <label>Prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
-      <label class="full">Notas <input type="text" id="m_notas" value="${m.notas||''}"></label>
+      <label class="full">Notas <input type="text" id="m_notas" value="${esc(m.notas||'')}"></label>
     </div>
     <h3>Medidas (pulgadas)</h3>
     <div class="measure-layout"><div class="measure-fields" id="measureFields"></div><div class="measure-diagram" id="measureDiagram"></div></div>
@@ -1352,6 +1390,23 @@ function openMeasureModal(id){
     document.getElementById('overlay').classList.remove('show'); render();
   });
   document.getElementById('overlay').classList.add('show');
+}
+
+async function deleteMeasurementWithPin(id){
+  const m = measurements.find(x=>x.id===id);
+  if(!m) return;
+  const pin = prompt(`Escribe el PIN de administrador para eliminar permanentemente las medidas de "${m.cliente}" (${folioMedidaLabel(m.folio||0)}):`);
+  if(pin === null) return;
+  if(pin !== (companyConfig.ownerPin || "0000")){ alert("PIN incorrecto. No se eliminó nada."); return; }
+  if(!confirm(`¿Seguro que quieres eliminar permanentemente ${folioMedidaLabel(m.folio||0)} de ${m.cliente}? Esta acción no se puede deshacer.`)) return;
+  try{
+    await db.collection('companies').doc(companyId).collection('measurements').doc(id).delete();
+    measurements = measurements.filter(x=>x.id!==id);
+    await logAudit('Eliminar medida', `${folioMedidaLabel(m.folio||0)} — ${m.cliente}`);
+    render();
+  }catch(e){
+    alert('Error al eliminar: ' + e.message);
+  }
 }
 
 function collectCurrentMeasureFormData(base){
@@ -1445,7 +1500,7 @@ function renderComisiones(){
     <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}. El total de cada encargado se calcula sumando el precio de las prendas que se le asignaron dentro de cada orden.</div>
     <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total</th><th>%</th><th>Comisión</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="5" class="empty">Sin encargados.</td></tr>'}</tbody>
-      <tfoot><tr style="font-weight:700;"><td colspan="4" data-label="">Total</td><td data-label="Total general">${fmtMoney(totalGeneral)}</td></tr></tfoot>
+      <tfoot><tr class="fw-bold"><td colspan="4" data-label="">Total</td><td data-label="Total general">${fmtMoney(totalGeneral)}</td></tr></tfoot>
     </table>`;
 }
 
@@ -1469,24 +1524,24 @@ function renderConfig(){
   draftSedes = JSON.parse(JSON.stringify(companyConfig.sedes||[]));
   return `
     <div class="formgrid">
-      <label class="full">Nombre empresa <input type="text" id="cfg_nombre" value="${companyConfig.nombreEmpresa}"></label>
+      <label class="full">Nombre empresa <input type="text" id="cfg_nombre" value="${esc(companyConfig.nombreEmpresa)}"></label>
     </div>
     <h3>Sucursales</h3>
     <div id="cfgSedesList"></div>
     <button class="btn ghost small" id="cfgAddSede" type="button">+ Agregar sucursal</button>
     <h3>Tipos de prenda</h3>
-    <textarea id="cfg_tiposPrenda" rows="4" style="width:100%;padding:8px;">${(companyConfig.tiposPrenda||[]).join('\n')}</textarea>
+    <textarea id="cfg_tiposPrenda" rows="4" class="w-100 pad-8">${(companyConfig.tiposPrenda||[]).join('\n')}</textarea>
     <h3>Tipos de servicio</h3>
-    <textarea id="cfg_tiposServicio" rows="4" style="width:100%;padding:8px;">${(companyConfig.tiposServicio||[]).join('\n')}</textarea>
+    <textarea id="cfg_tiposServicio" rows="4" class="w-100 pad-8">${(companyConfig.tiposServicio||[]).join('\n')}</textarea>
     <h3>Tipos de inventario</h3>
-    <textarea id="cfg_tiposInventario" rows="3" style="width:100%;padding:8px;">${(companyConfig.tiposInventario||[]).join('\n')}</textarea>
+    <textarea id="cfg_tiposInventario" rows="3" class="w-100 pad-8">${(companyConfig.tiposInventario||[]).join('\n')}</textarea>
     <div class="formfoot"><button class="btn gold" id="cfgSaveBtn" type="button">Guardar</button></div>
 
-    <h3 style="margin-top:30px;">🔒 PIN del dueño</h3>
-    <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" style="max-width:160px;">
-    <button class="btn ghost small" id="cfgSavePinBtn" type="button" style="margin-top:10px;">Guardar PIN</button>
+    <h3 class="mt-30">🔒 PIN del dueño</h3>
+    <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" class="max-w-160">
+    <button class="btn ghost small" id="cfgSavePinBtn" type="button" class="mt-10">Guardar PIN</button>
 
-    <h3 style="margin-top:30px;">👤 Cuenta de acceso</h3>
+    <h3 class="mt-30">👤 Cuenta de acceso</h3>
     <div class="note">Correo actual: <b>${currentUser.email}</b></div>
     <div class="formgrid">
       <label>Nuevo correo <input type="email" id="cfg_newEmail" placeholder="nuevo@correo.com"></label>
@@ -1495,7 +1550,7 @@ function renderConfig(){
     <div class="autherror" id="cfgEmailMsg"></div>
     <button class="btn ghost small" id="cfgChangeEmailBtn" type="button">Cambiar correo</button>
 
-    <h3 style="margin-top:24px;">🔑 Cambiar contraseña</h3>
+    <h3 class="mt-24">🔑 Cambiar contraseña</h3>
     <div class="formgrid">
       <label>Contraseña actual <input type="password" id="cfg_currentPassword"></label>
       <label></label>
@@ -1505,27 +1560,27 @@ function renderConfig(){
     <div class="autherror" id="cfgPasswordMsg"></div>
     <button class="btn ghost small" id="cfgChangePasswordBtn" type="button">Cambiar contraseña</button>
 
-    <h3 style="margin-top:30px;">✅ Correos autorizados para crear cuenta</h3>
+    <h3 class="mt-30">✅ Correos autorizados para crear cuenta</h3>
     <div class="note">Solo los correos de esta lista podrán usar "Crea tu cuenta" en la pantalla de acceso. Uno por línea.</div>
     <textarea id="cfg_allowlist" rows="4">Cargando…</textarea>
-    <button class="btn ghost small" id="cfgSaveAllowlistBtn" type="button" style="margin-top:10px;">Guardar lista</button>
+    <button class="btn ghost small" id="cfgSaveAllowlistBtn" type="button" class="mt-10">Guardar lista</button>
     <div class="autherror" id="cfgAllowlistMsg"></div>
 
-    <div class="note" style="margin-top:20px;border-color:var(--red);background:var(--red-bg);color:var(--red);">
+    <div class="note note-red-alt">
       <b>⚠️ Zona de peligro</b> - Esto borra TODOS tus datos permanentemente.
     </div>
-    <button class="btn" id="deleteAccountBtn" type="button" style="background:var(--red);">🗑️ Eliminar cuenta y datos</button>`;
+    <button class="btn btn-solid-danger" id="deleteAccountBtn" type="button">🗑️ Eliminar cuenta y datos</button>`;
 }
 
 function renderCfgSedes(){
   document.getElementById('cfgSedesList').innerHTML = draftSedes.map((s,i)=>`
     <div class="sedecard">
       <div class="fields">
-        <label>Nombre <input type="text" data-si="${i}" data-f="nombre" value="${s.nombre}"></label>
-        <label>Dirección <input type="text" data-si="${i}" data-f="direccion" value="${s.direccion}"></label>
+        <label>Nombre <input type="text" data-si="${i}" data-f="nombre" value="${esc(s.nombre)}"></label>
+        <label>Dirección <input type="text" data-si="${i}" data-f="direccion" value="${esc(s.direccion)}"></label>
         <button class="btn danger small" type="button" data-removesede="${i}">✕</button>
       </div>
-      <label>Encargados <textarea rows="2" data-si="${i}" data-f="encargados" style="width:100%;">${(s.encargados||[]).join('\n')}</textarea></label>
+      <label>Encargados <textarea rows="2" data-si="${i}" data-f="encargados" class="w-100">${(s.encargados||[]).join('\n')}</textarea></label>
     </div>`).join('');
   document.querySelectorAll('#cfgSedesList [data-f]').forEach(el=>{
     el.addEventListener('change', e=>{
@@ -1657,7 +1712,7 @@ async function deleteAllCompanyData(){
 
 function openDeleteAccountModal(){
   document.getElementById('modalBox').innerHTML = `
-    <h2 style="color:var(--red);">⚠️ Eliminar cuenta</h2>
+    <h2 class="text-red">⚠️ Eliminar cuenta</h2>
     <p>Esto borra TODOS los datos permanentemente.</p>
     <div class="formgrid">
       <label class="full">Contraseña <input type="password" id="del_password"></label>
@@ -1666,7 +1721,7 @@ function openDeleteAccountModal(){
     <div class="autherror" id="delError"></div>
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
-      <button class="btn" id="confirmDeleteBtn" type="button" style="background:var(--red);color:#fff;">Eliminar todo</button>
+      <button class="btn btn-solid-danger" id="confirmDeleteBtn" type="button">Eliminar todo</button>
     </div>`;
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
   document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
