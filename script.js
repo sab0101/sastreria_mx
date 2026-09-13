@@ -199,7 +199,7 @@ function renderAuthScreen(){
       <div class="autherror" id="authError"></div>
       <label>Correo <input type="email" id="authEmail" autocomplete="username"></label>
       <label>Contraseña <input type="password" id="authPassword" autocomplete="current-password"></label>
-      <button class="btn gold" id="authSubmitBtn" class="w-100">${authMode==='login'?'Iniciar sesión':'Crear cuenta'}</button>
+      <button class="btn gold w-100" id="authSubmitBtn">${authMode==='login'?'Iniciar sesión':'Crear cuenta'}</button>
       <div class="authswitch">
         ${authMode==='login' ? `¿Empresa nueva? <a id="toSignup">Crea tu cuenta</a>` : `¿Ya tienes cuenta? <a id="toLogin">Inicia sesión</a>`}
       </div>
@@ -548,7 +548,7 @@ function renderOwnerLock(){
     <p class="text-soft-md">Dashboard, Comisiones y Configuración están protegidos. Escribe el PIN del dueño para entrar.</p>
     <input type="password" id="ownerPinInput" placeholder="PIN del dueño" class="w-full-spaced">
     <div id="ownerLockError" class="pin-error"></div>
-    <button class="btn gold" id="ownerLockBtn" class="w-100">Entrar</button>
+    <button class="btn gold w-100" id="ownerLockBtn">Entrar</button>
     <p class="hint-below"><a id="forgotPinLink" class="link-navy">¿Olvidaste tu PIN?</a></p>
   </div>`;
 }
@@ -625,7 +625,7 @@ function backupReminderBanner(){
 
 function ownerSessionBar(){
   return `<div class="row-end">
-    <button class="btn ghost small" id="ownerLockBackBtn" type="button" class="border-danger">🔒 Bloquear esta sección</button>
+    <button class="btn ghost small border-danger" id="ownerLockBackBtn" type="button">🔒 Bloquear esta sección</button>
   </div>`;
 }
 
@@ -815,7 +815,7 @@ function renderOrdenes(){
     const pend = saldo(o);
     const prendasResumen = (o.prendas||[]).map(p=>p.tipo).join(", ") || "—";
     const thumbs = (o.prendas||[]).filter(p=>p.foto).slice(0,3).map(p=>`<img src="${p.foto}">`).join('');
-    return `<tr class="${alert.cls==='late' ? 'overdue':''}" data-view="${o.id}" class="clickable">
+    return `<tr class="${alert.cls==='late' ? 'overdue':''} clickable" data-view="${o.id}">
       <td class="ticket" data-label="Ticket">${ticketLabel(o.ticket)}</td>
       <td data-label="Cliente">${esc(o.cliente)}<br><span class="text-soft-sm">${esc(o.celular)}</span></td>
       <td data-label="Prendas">${prendasResumen}<div class="thumbs">${thumbs}</div></td>
@@ -1071,7 +1071,10 @@ function openDetailModal(id){
   const o = orders.find(x=>x.id===id); if(!o) return;
   const alert = computeAlert(o);
   document.getElementById('modalBox').innerHTML = `
-    <h2>Detalle ${ticketLabel(o.ticket)} <span class="badge ${alert.cls}">${alert.label}</span></h2>
+    <div class="modal-head">
+      <h2 class="m-0">Detalle ${ticketLabel(o.ticket)} <span class="badge ${alert.cls}">${alert.label}</span></h2>
+      <button class="modal-x" id="cancelBtn" type="button" aria-label="Cerrar">✕</button>
+    </div>
     <div class="receipt">
       <div class="rtitle">${esc(companyConfig.nombreEmpresa)}</div>
       <div class="rsmall">${esc(sedeInfo(o.sede).direccion || o.sede)}</div>
@@ -1090,7 +1093,6 @@ function openDetailModal(id){
       ${o.notas ? `<div class="rline"><span>Notas</span><span>${esc(o.notas)}</span></div>` : ''}
     </div>
     <div class="formfoot">
-      <button class="btn ghost" id="cancelBtn" type="button">Cerrar</button>
       <button class="btn ghost" id="printClienteBtn" type="button">🖨️ Ticket</button>
       <button class="btn ghost" id="pdfOrderBtn" type="button">📄 PDF + contrato</button>
       <button class="btn ghost" id="waBoletaBtn" type="button">📱 Boleta WhatsApp</button>
@@ -1327,7 +1329,7 @@ function renderExtraFields(tipo, extra){
       return `<label>${f.label} <select class="measextra" data-key="${f.key}"><option value="">—</option>${f.options.map(o=>`<option ${String(val)===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
     }
     if(f.type === 'textarea'){
-      return `<label class="full">${f.label} <textarea class="measextra" data-key="${f.key}" rows="2" class="w-100">${esc(val)}</textarea></label>`;
+      return `<label class="full">${f.label} <textarea class="measextra w-100" data-key="${f.key}" rows="2">${esc(val)}</textarea></label>`;
     }
     return `<label>${f.label} <input type="${f.type}" class="measextra" data-key="${f.key}" value="${esc(val)}"></label>`;
   }).join('');
@@ -1539,7 +1541,7 @@ function renderConfig(){
 
     <h3 class="mt-30">🔒 PIN del dueño</h3>
     <input type="text" id="cfg_pin" value="${companyConfig.ownerPin||'0000'}" class="max-w-160">
-    <button class="btn ghost small" id="cfgSavePinBtn" type="button" class="mt-10">Guardar PIN</button>
+  <button class="btn ghost small mt-10" id="cfgSavePinBtn" type="button">Guardar PIN</button>
 
     <h3 class="mt-30">👤 Cuenta de acceso</h3>
     <div class="note">Correo actual: <b>${currentUser.email}</b></div>
@@ -1559,12 +1561,6 @@ function renderConfig(){
     </div>
     <div class="autherror" id="cfgPasswordMsg"></div>
     <button class="btn ghost small" id="cfgChangePasswordBtn" type="button">Cambiar contraseña</button>
-
-    <h3 class="mt-30">✅ Correos autorizados para crear cuenta</h3>
-    <div class="note">Solo los correos de esta lista podrán usar "Crea tu cuenta" en la pantalla de acceso. Uno por línea.</div>
-    <textarea id="cfg_allowlist" rows="4">Cargando…</textarea>
-    <button class="btn ghost small" id="cfgSaveAllowlistBtn" type="button" class="mt-10">Guardar lista</button>
-    <div class="autherror" id="cfgAllowlistMsg"></div>
 
     <div class="note note-red-alt">
       <b>⚠️ Zona de peligro</b> - Esto borra TODOS tus datos permanentemente.
@@ -1665,35 +1661,6 @@ function attachConfigEvents(){
   document.getElementById('cfgChangeEmailBtn').addEventListener('click', changeEmailAccount);
   document.getElementById('cfgChangePasswordBtn').addEventListener('click', changePasswordAccount);
   document.getElementById('deleteAccountBtn').addEventListener('click', openDeleteAccountModal);
-
-  loadAllowlistIntoTextarea();
-  document.getElementById('cfgSaveAllowlistBtn').addEventListener('click', saveAllowlistFromTextarea);
-}
-
-async function loadAllowlistIntoTextarea(){
-  const ta = document.getElementById('cfg_allowlist');
-  try{
-    const doc = await db.collection('config').doc('signupAllowlist').get();
-    const emails = doc.exists ? (doc.data().emails || []) : [];
-    ta.value = emails.join('\n');
-  }catch(e){
-    ta.value = '';
-    console.error('No se pudo cargar la lista de correos autorizados:', e);
-  }
-}
-
-async function saveAllowlistFromTextarea(){
-  const errEl = document.getElementById('cfgAllowlistMsg');
-  errEl.style.color = 'var(--red)'; errEl.textContent = '';
-  const emails = document.getElementById('cfg_allowlist').value
-    .split('\n').map(x=>x.trim().toLowerCase()).filter(Boolean);
-  try{
-    await db.collection('config').doc('signupAllowlist').set({ emails });
-    errEl.style.color = 'var(--green)';
-    errEl.textContent = '✅ Lista actualizada.';
-  }catch(e){
-    errEl.textContent = 'Error al guardar: ' + e.message;
-  }
 }
 
 // ============================================================
