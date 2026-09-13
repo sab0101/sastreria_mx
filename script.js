@@ -1353,7 +1353,7 @@ function openMeasureModal(id){
     ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}"`).join(', ')}</li>`).join('')}</ul></div>` : ''}
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
-      ${id ? `<button class="btn ghost" id="pdfMeasBtn" type="button">📄 Descargar PDF</button>` : ''}
+      <button class="btn ghost" id="pdfMeasBtn" type="button">📄 Descargar PDF</button>
       <button class="btn gold" id="saveMeasBtn" type="button">Guardar</button>
     </div>`;
   function fillFields(){
@@ -1365,9 +1365,7 @@ function openMeasureModal(id){
   fillFields();
   document.getElementById('m_tipo').addEventListener('change', fillFields);
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
-  if(id){
-    document.getElementById('pdfMeasBtn').addEventListener('click', () => downloadMeasurementPDF(collectCurrentMeasureFormData(m)));
-  }
+  document.getElementById('pdfMeasBtn').addEventListener('click', () => downloadMeasurementPDF(collectCurrentMeasureFormData(m)));
   document.getElementById('saveMeasBtn').addEventListener('click', async () => {
     const cliente = document.getElementById('m_cliente').value.trim();
     const celular = document.getElementById('m_celular').value.trim();
@@ -1439,7 +1437,7 @@ function downloadMeasurementPDF(m){
   linea('Celular', m.celular);
   if(m.extra && m.extra.correo) linea('Correo', m.extra.correo);
   linea('Prenda', m.tipo);
-  linea('Actualizado', new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX'));
+  linea('Actualizado', m.fechaActualizacion ? new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX') : new Date().toLocaleDateString('es-MX') + ' (sin guardar aún)');
   y += 3;
   doc.setFont('helvetica','bold'); doc.text('Medidas (pulgadas)', 14, y); y += 6;
   doc.setFont('helvetica','normal');
@@ -1464,7 +1462,7 @@ function downloadMeasurementPDF(m){
     const text = doc.splitTextToSize(m.notas, 180);
     doc.text(text, 14, y);
   }
-  doc.save(`medidas_${folioMedidaLabel(m.folio||0)}_${m.cliente.replace(/\s+/g,'_')}.pdf`);
+  doc.save(`medidas_${folioMedidaLabel(m.folio||0)}_${(m.cliente||'sin_nombre').trim().replace(/\s+/g,'_') || 'sin_nombre'}.pdf`);
 }
 
 // ============================================================
