@@ -24,7 +24,7 @@ db.enablePersistence()
 // ESTADO GLOBAL
 // ============================================================
 let currentUser = null, companyId = null, companyConfig = null;
-let orders = [], inventory = [], measurements = [];
+let orders = [], inventory = [], measurements = [], nomina = [], nominaPagos = [];
 let currentView = "ordenes";
 let editingId = null, editingMeasureId = null;
 let draftPrendas = [], draftPagos = [];
@@ -603,6 +603,7 @@ function renderAdministracion(){
     <div class="filters mb-lg">
       <button class="btn ${adminTab==='dashboard'?'gold':'ghost'} small" data-admintab="dashboard" type="button">Dashboard</button>
       <button class="btn ${adminTab==='comisiones'?'gold':'ghost'} small" data-admintab="comisiones" type="button">Comisiones</button>
+      <button class="btn ${adminTab==='nomina'?'gold':'ghost'} small" data-admintab="nomina" type="button">Nómina</button>
       <button class="btn ${adminTab==='config'?'gold':'ghost'} small" data-admintab="config" type="button">Configuración</button>
       <button class="btn ${adminTab==='auditoria'?'gold':'ghost'} small" data-admintab="auditoria" type="button">Historial</button>
     </div>
@@ -640,6 +641,12 @@ async function attachAdministracionEvents(){
   const content = document.getElementById('adminContent');
   if(adminTab === 'dashboard'){ content.innerHTML = renderDashboard(); attachDashboardEvents(); }
   else if(adminTab === 'comisiones'){ content.innerHTML = renderComisiones(); attachComisionesEvents(); }
+  else if(adminTab === 'nomina'){
+    content.innerHTML = 'Cargando nómina…';
+    await loadNominaDelMes(window.__nominaMes || todayStr().slice(0,7));
+    content.innerHTML = renderNomina();
+    attachNominaEvents();
+  }
   else if(adminTab === 'config'){ content.innerHTML = renderConfig(); attachConfigEvents(); }
   else if(adminTab === 'auditoria'){
     content.innerHTML = 'Cargando historial…';
@@ -1468,34 +1475,38 @@ function downloadMeasurementPDF(m){
 // ============================================================
 // COMISIONES
 // ============================================================
+// Suma las ventas (precio de prendas) atribuidas a un encargado en una sede durante un mes dado (YYYY-MM).
+// Compartida entre Comisiones y Nómina para que ambos módulos calculen exactamente lo mismo.
+function totalVentasPorEncargado(sede, nombre, mes){
+  return orders.filter(o=>o.sede===sede && o.fechaRecibido.slice(0,7)===mes)
+    .reduce((s,o)=>{
+      const prendasDe = (o.prendas && o.prendas.length ? o.prendas : [{encargado:o.encargado, precio:o.costo}]);
+      return s + prendasDe.filter(p => (p.encargado||o.encargado) === nombre).reduce((a,p)=>a+Number(p.precio||0),0);
+    }, 0);
+}
+
+function comisionDelMes(sede, nombre, mes){
+  const commissions = companyConfig.commissions || {};
+  const pct = commissions[sede+"|"+nombre] !== undefined ? commissions[sede+"|"+nombre] : 10;
+  return totalVentasPorEncargado(sede, nombre, mes) * pct/100;
+}
+
 function renderComisiones(){
   const mesActual = todayStr().slice(0,7);
   let allStaff = [];
   (companyConfig.sedes||[]).forEach(s => (s.encargados||[]).forEach(n => allStaff.push({sede:s.nombre, nombre:n})));
   const commissions = companyConfig.commissions || {};
 
-  function totalPorEncargado(sede, nombre){
-    return orders.filter(o=>o.sede===sede && o.fechaRecibido.slice(0,7)===mesActual)
-      .reduce((s,o)=>{
-        const prendasDe = (o.prendas && o.prendas.length ? o.prendas : [{encargado:o.encargado, precio:o.costo}]);
-        return s + prendasDe.filter(p => (p.encargado||o.encargado) === nombre).reduce((a,p)=>a+Number(p.precio||0),0);
-      }, 0);
-  }
-
   const rows = allStaff.map(({sede,nombre}) => {
     const key = sede+"|"+nombre;
-    const total = totalPorEncargado(sede, nombre);
+    const total = totalVentasPorEncargado(sede, nombre, mesActual);
     const pct = commissions[key] !== undefined ? commissions[key] : 10;
     const comision = total * pct/100;
     return `<tr><td data-label="Encargado">${nombre}</td><td data-label="Sede">${sede}</td><td data-label="Total">${fmtMoney(total)}</td>
       <td data-label="%"><input type="number" class="pctinput" data-key="${key}" value="${pct}" min="0" max="100">%</td>
       <td data-label="Comisión">${fmtMoney(comision)}</td></tr>`;
   }).join('');
-  const totalGeneral = allStaff.reduce((s,{sede,nombre})=>{
-    const total = totalPorEncargado(sede, nombre);
-    const pct = commissions[sede+"|"+nombre] !== undefined ? commissions[sede+"|"+nombre] : 10;
-    return s + total*pct/100;
-  },0);
+  const totalGeneral = allStaff.reduce((s,{sede,nombre})=>s + comisionDelMes(sede, nombre, mesActual), 0);
   return `
     <div class="note">Mes: ${new Date(mesActual+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'})}. El total de cada encargado se calcula sumando el precio de las prendas que se le asignaron dentro de cada orden.</div>
     <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Total</th><th>%</th><th>Comisión</th></tr></thead>
@@ -1513,6 +1524,279 @@ function attachComisionesEvents(){
       render();
     });
   });
+}
+
+// ============================================================
+// NÓMINA (asistencia + monto por día, sin cálculos de ley)
+// ============================================================
+function nominaDocId(fecha, sede, encargado){
+  return `${fecha}_${sede}_${encargado}`.replace(/[\/\s]+/g,'-');
+}
+
+async function loadNominaDelMes(mes){
+  try{
+    const snap = await db.collection('companies').doc(companyId).collection('nomina')
+      .where('fecha', '>=', mes+'-01').where('fecha', '<=', mes+'-31').get();
+    nomina = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  }catch(e){
+    nomina = [];
+    console.error('Error cargando nómina:', e);
+  }
+  try{
+    const snapPagos = await db.collection('companies').doc(companyId).collection('nominaPagos')
+      .where('mes', '==', mes).get();
+    nominaPagos = snapPagos.docs.map(d=>({id:d.id, ...d.data()}));
+  }catch(e){
+    nominaPagos = [];
+    console.error('Error cargando pagos de nómina:', e);
+  }
+}
+
+function nominaPagoDocId(mes, sede, encargado){
+  return `${mes}_${sede}_${encargado}`.replace(/[\/\s]+/g,'-');
+}
+
+function nominaPagoDoc(mes, sede, nombre){
+  return nominaPagos.find(p=>p.mes===mes && p.sede===sede && p.encargado===nombre);
+}
+
+// Días pagados del mes = asistencias marcadas + domingos del mes (día de descanso pagado),
+// sin duplicar si ese domingo ya tiene su propio registro explícito de asistencia/falta.
+function diasPagadosMes(sede, nombre, mes){
+  const registros = nomina.filter(n=>n.sede===sede && n.encargado===nombre);
+  const asistenciasMarcadas = registros.filter(n=>n.estado==='Asistencia').length;
+  const fechasConRegistro = new Set(registros.map(n=>n.fecha));
+  const [anio, mesNum] = mes.split('-').map(Number);
+  const diasEnMes = new Date(anio, mesNum, 0).getDate();
+  let domingosPagados = 0;
+  for(let d=1; d<=diasEnMes; d++){
+    const fecha = `${mes}-${String(d).padStart(2,'0')}`;
+    if(new Date(anio, mesNum-1, d).getDay() === 0 && !fechasConRegistro.has(fecha)){
+      domingosPagados++;
+    }
+  }
+  return asistenciasMarcadas + domingosPagados;
+}
+
+function totalAbonadoNomina(mes, sede, nombre){
+  const doc = nominaPagoDoc(mes, sede, nombre);
+  return (doc?.pagos||[]).reduce((s,p)=>s+Number(p.monto||0), 0);
+}
+
+// Total a pagar de un encargado en el mes: salario fijo (asistencias x tarifa diaria) + comisión variable del mes.
+function totalAPagarNomina(sede, nombre, mes, asistencias, tarifa){
+  return (asistencias * tarifa) + comisionDelMes(sede, nombre, mes);
+}
+
+function tarifaDiaria(sede, nombre){
+  return Number((companyConfig.tarifasDiarias||{})[sede+"|"+nombre] || 0);
+}
+
+async function saveAsistencia(fecha, sede, encargado, estado){
+  const id = nominaDocId(fecha, sede, encargado);
+  const data = {fecha, sede, encargado, estado};
+  await db.collection('companies').doc(companyId).collection('nomina').doc(id).set(data);
+  const idx = nomina.findIndex(n=>n.id===id);
+  if(idx >= 0) nomina[idx] = {...data, id};
+  else nomina.push({...data, id});
+}
+
+function renderNomina(){
+  const mes = window.__nominaMes || todayStr().slice(0,7);
+  const fecha = window.__nominaFecha || todayStr();
+  let allStaff = [];
+  (companyConfig.sedes||[]).forEach(s => (s.encargados||[]).forEach(n => allStaff.push({sede:s.nombre, nombre:n})));
+
+  const filasAsistencia = allStaff.map(({sede,nombre}) => {
+    const id = nominaDocId(fecha, sede, nombre);
+    const registro = nomina.find(n=>n.id===id);
+    const estado = registro ? registro.estado : 'Asistencia';
+    return `<tr>
+      <td data-label="Encargado">${esc(nombre)}</td>
+      <td data-label="Sede">${esc(sede)}</td>
+      <td data-label="Estado"><select class="asistencia-select" data-sede="${esc(sede)}" data-nombre="${esc(nombre)}">
+        <option ${estado==='Asistencia'?'selected':''}>Asistencia</option>
+        <option ${estado==='Falta'?'selected':''}>Falta</option>
+      </select></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="3" class="empty">Agrega encargados en Configuración.</td></tr>`;
+
+  const resumenPorPersona = allStaff.map(({sede,nombre}) => {
+    const registros = nomina.filter(n=>n.sede===sede && n.encargado===nombre);
+    const asistencias = diasPagadosMes(sede, nombre, mes);
+    const faltas = registros.filter(n=>n.estado==='Falta').length;
+    const tarifa = tarifaDiaria(sede, nombre);
+    const salarioFijo = asistencias * tarifa;
+    const comision = comisionDelMes(sede, nombre, mes);
+    const total = salarioFijo + comision;
+    const abonado = totalAbonadoNomina(mes, sede, nombre);
+    const saldo = total - abonado;
+    return {sede, nombre, asistencias, faltas, tarifa, salarioFijo, comision, total, abonado, saldo};
+  });
+  const totalGeneral = resumenPorPersona.reduce((s,r)=>s+r.total, 0);
+  const totalAbonadoGeneral = resumenPorPersona.reduce((s,r)=>s+r.abonado, 0);
+  const totalSaldoGeneral = resumenPorPersona.reduce((s,r)=>s+r.saldo, 0);
+
+  const filasResumen = resumenPorPersona.map(r => `<tr>
+    <td data-label="Encargado">${esc(r.nombre)}</td>
+    <td data-label="Sede">${esc(r.sede)}</td>
+    <td data-label="Asistencias">${r.asistencias}</td>
+    <td data-label="Faltas">${r.faltas}</td>
+    <td data-label="Monto/día"><input type="number" class="pctinput tarifainput" data-key="${r.sede}|${r.nombre}" value="${r.tarifa}" min="0" step="0.01"></td>
+    <td data-label="Salario fijo">${fmtMoney(r.salarioFijo)}</td>
+    <td data-label="Comisión del mes">${fmtMoney(r.comision)}</td>
+    <td data-label="Total a pagar"><b>${fmtMoney(r.total)}</b></td>
+    <td data-label="Abonado">${fmtMoney(r.abonado)}</td>
+    <td data-label="Saldo"><b>${fmtMoney(r.saldo)}</b></td>
+    <td><button class="rowbtn" data-pagosnomina="${esc(r.sede)}|${esc(r.nombre)}">💰 Pagos</button></td>
+  </tr>`).join('') || `<tr><td colspan="11" class="empty">Sin encargados.</td></tr>`;
+
+  const monthOptions = (() => {
+    const opts = [];
+    const hoy = new Date();
+    for(let i=0;i<12;i++){
+      const d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+      const val = d.toISOString().slice(0,7);
+      const label = d.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+      opts.push(`<option value="${val}" ${val===mes?'selected':''}>${label}</option>`);
+    }
+    return opts.join('');
+  })();
+
+  return `
+    <div class="note">Este módulo solo registra asistencia/falta y calcula un pago simple (días de asistencia × monto por día). No incluye prestaciones, IMSS, aguinaldo ni ningún otro cálculo de ley — es un registro informal para tu control interno.</div>
+
+    <h2 class="section-title m-0">Registrar asistencia del día</h2>
+    <div class="filters">
+      <input type="date" id="nominaFecha" value="${fecha}">
+    </div>
+    <table class="orders"><thead><tr><th>Encargado</th><th>Sede</th><th>Estado</th></tr></thead><tbody>${filasAsistencia}</tbody></table>
+    <div class="formfoot"><button class="btn gold" id="guardarAsistenciaBtn" type="button">Guardar asistencia del día</button></div>
+
+    <h2 class="section-title">Resumen del mes</h2>
+    <div class="note">Total a pagar = salario fijo (asistencias × monto por día) + comisión variable del mes (se actualiza sola conforme registras órdenes). El dueño paga semanal: usa el botón "Pagos" para ir registrando cada abono hasta cubrir el total.</div>
+    <div class="filters">
+      <select id="nominaMes">${monthOptions}</select>
+    </div>
+    <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Asist.</th><th>Faltas</th><th>Monto/día</th><th>Salario fijo</th><th>Comisión</th><th>Total a pagar</th><th>Abonado</th><th>Saldo</th><th></th></tr></thead>
+      <tbody>${filasResumen}</tbody>
+      <tfoot><tr class="fw-bold"><td colspan="7" data-label="">Total general</td><td data-label="Total a pagar">${fmtMoney(totalGeneral)}</td><td data-label="Abonado">${fmtMoney(totalAbonadoGeneral)}</td><td data-label="Saldo">${fmtMoney(totalSaldoGeneral)}</td><td></td></tr></tfoot>
+    </table>`;
+}
+
+function attachNominaEvents(){
+  document.getElementById('nominaFecha').addEventListener('change', e => { window.__nominaFecha = e.target.value; render(); });
+  document.getElementById('nominaMes').addEventListener('change', async e => {
+    window.__nominaMes = e.target.value;
+    await loadNominaDelMes(window.__nominaMes);
+    render();
+  });
+  document.getElementById('guardarAsistenciaBtn').addEventListener('click', async () => {
+    const fecha = window.__nominaFecha || todayStr();
+    const selects = document.querySelectorAll('.asistencia-select');
+    try{
+      await Promise.all(Array.from(selects).map(sel =>
+        saveAsistencia(fecha, sel.dataset.sede, sel.dataset.nombre, sel.value)
+      ));
+      await logAudit('Registrar asistencia', `Fecha ${fecha} — ${selects.length} encargado(s)`);
+      alert('Asistencia guardada.');
+      render();
+    }catch(e){
+      alert('Error al guardar: ' + e.message);
+    }
+  });
+  document.querySelectorAll('.tarifainput').forEach(inp => {
+    inp.addEventListener('change', async e => {
+      const tarifasDiarias = {...(companyConfig.tarifasDiarias||{})};
+      tarifasDiarias[e.target.dataset.key] = Math.max(0, Number(e.target.value)||0);
+      await saveCompanyConfig({tarifasDiarias});
+      render();
+    });
+  });
+  document.querySelectorAll('[data-pagosnomina]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [sede, nombre] = btn.dataset.pagosnomina.split('|');
+      openNominaPagosModal(sede, nombre);
+    });
+  });
+}
+
+let draftNominaPagos = [];
+
+function openNominaPagosModal(sede, nombre){
+  const mes = window.__nominaMes || todayStr().slice(0,7);
+  const asistencias = diasPagadosMes(sede, nombre, mes);
+  const tarifa = tarifaDiaria(sede, nombre);
+  const salarioFijo = asistencias * tarifa;
+  const comision = comisionDelMes(sede, nombre, mes);
+  const total = salarioFijo + comision;
+  const doc = nominaPagoDoc(mes, sede, nombre);
+  draftNominaPagos = JSON.parse(JSON.stringify(doc?.pagos || []));
+  const mesLabel = new Date(mes+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+
+  function renderRows(){
+    document.getElementById('nominaPagosList').innerHTML = draftNominaPagos.map((p,i) => `
+      <div class="subrow"><div class="fields" style="grid-template-columns:1fr 1fr auto;">
+        <label>Fecha <input type="date" data-pi="${i}" data-field="fecha" value="${p.fecha}"></label>
+        <label>Monto <input type="number" data-pi="${i}" data-field="monto" value="${p.monto}" min="0"></label>
+        <button class="btn danger small" data-removepago="${i}" type="button">✕</button>
+      </div></div>`).join('') || `<div class="note">Sin pagos registrados este mes.</div>`;
+    document.querySelectorAll('#nominaPagosList input').forEach(el => {
+      el.addEventListener('change', e => {
+        const f = e.target.dataset.field;
+        draftNominaPagos[e.target.dataset.pi][f] = f==='monto' ? Math.max(0, Number(e.target.value)||0) : e.target.value;
+        updateNominaSubtotal(salarioFijo, comision);
+      });
+    });
+    document.querySelectorAll('[data-removepago]').forEach(b => b.addEventListener('click', () => {
+      draftNominaPagos.splice(Number(b.dataset.removepago),1); renderRows(); updateNominaSubtotal(salarioFijo, comision);
+    }));
+    updateNominaSubtotal(salarioFijo, comision);
+  }
+
+  document.getElementById('modalBox').innerHTML = `
+    <div class="modal-head">
+      <h2 class="m-0">Pagos de ${esc(nombre)} — ${mesLabel}</h2>
+      <button class="modal-x" id="cancelBtn" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="note">Salario fijo: ${fmtMoney(salarioFijo)} (${asistencias} asistencia(s) × ${fmtMoney(tarifa)}) + Comisión del mes: ${fmtMoney(comision)} = <b>Total a pagar: ${fmtMoney(total)}</b></div>
+    <h3>Pagos semanales</h3>
+    <div id="nominaPagosList"></div>
+    <button class="btn ghost small" id="addPagoNominaBtn" type="button">+ Agregar pago</button>
+    <div class="subtotal" id="nominaSubtotalBox"></div>
+    <div class="formfoot">
+      <button class="btn gold" id="saveNominaPagosBtn" type="button">Guardar</button>
+    </div>`;
+  renderRows();
+  document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
+  document.getElementById('addPagoNominaBtn').addEventListener('click', () => { draftNominaPagos.push({fecha: todayStr(), monto:0}); renderRows(); });
+  document.getElementById('saveNominaPagosBtn').addEventListener('click', async () => {
+    const id = nominaPagoDocId(mes, sede, nombre);
+    const data = {mes, sede, encargado: nombre, pagos: draftNominaPagos};
+    try{
+      await db.collection('companies').doc(companyId).collection('nominaPagos').doc(id).set(data);
+      const idx = nominaPagos.findIndex(p=>p.id===id);
+      if(idx>=0) nominaPagos[idx] = {...data, id}; else nominaPagos.push({...data, id});
+      await logAudit('Registrar pago de nómina', `${nombre} — ${mesLabel} — ${fmtMoney(draftNominaPagos.reduce((s,p)=>s+Number(p.monto||0),0))}`);
+      document.getElementById('overlay').classList.remove('show');
+      render();
+    }catch(e){ alert('Error al guardar: ' + e.message); }
+  });
+  document.getElementById('overlay').classList.add('show');
+}
+
+function updateNominaSubtotal(salarioFijo, comision){
+  const abonado = draftNominaPagos.reduce((s,p)=>s+Number(p.monto||0),0);
+  const total = salarioFijo + comision;
+  // El pago semanal cubre primero el salario fijo; lo que sobra va a la comisión.
+  const pagadoASalario = Math.min(abonado, salarioFijo);
+  const pagadoAComision = Math.max(0, abonado - salarioFijo);
+  const saldoSalario = salarioFijo - pagadoASalario;
+  const saldoComision = comision - pagadoAComision;
+  document.getElementById('nominaSubtotalBox').innerHTML = `
+    <div>💵 Salario fijo: abonado ${fmtMoney(pagadoASalario)} de ${fmtMoney(salarioFijo)} · saldo ${fmtMoney(saldoSalario)}</div>
+    <div>📊 Comisión: abonado ${fmtMoney(pagadoAComision)} de ${fmtMoney(comision)} · saldo ${fmtMoney(saldoComision)}</div>
+    <div class="fw-bold mt-tiny">Total abonado: ${fmtMoney(abonado)} de ${fmtMoney(total)} · Saldo total: ${fmtMoney(total-abonado)}</div>`;
 }
 
 // ============================================================
