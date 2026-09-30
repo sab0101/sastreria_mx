@@ -1601,11 +1601,28 @@ async function saveAsistencia(fecha, sede, encargado, estado){
   else nomina.push({...data, id});
 }
 
+// ---------- Filtros ----------
+function nominaTodoElStaff(){
+  const staff = [];
+  (companyConfig.sedes||[]).forEach(s => (s.encargados||[]).forEach(n => staff.push({sede:s.nombre, nombre:n})));
+  return staff;
+}
+function nominaStaffFiltrado(){
+  const sedeF = window.__nominaSede || "";
+  const persF = window.__nominaPersona || "";
+  return nominaTodoElStaff().filter(x =>
+    (!sedeF || x.sede === sedeF) && (!persF || (x.sede + "|" + x.nombre) === persF));
+}
+
 function renderNomina(){
   const mes = window.__nominaMes || todayStr().slice(0,7);
   const fecha = window.__nominaFecha || todayStr();
-  let allStaff = [];
-  (companyConfig.sedes||[]).forEach(s => (s.encargados||[]).forEach(n => allStaff.push({sede:s.nombre, nombre:n})));
+  const sedeF = window.__nominaSede || "";
+  const persF = window.__nominaPersona || "";
+  const desde = window.__nominaDesde || "";
+  const hasta = window.__nominaHasta || "";
+  const allStaff = nominaStaffFiltrado();
+  const esSabado = new Date().getDay() === 6;
 
   const filasAsistencia = allStaff.map(({sede,nombre}) => {
     const id = nominaDocId(fecha, sede, nombre);
@@ -1619,7 +1636,7 @@ function renderNomina(){
         <option ${estado==='Falta'?'selected':''}>Falta</option>
       </select></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="3" class="empty">Agrega encargados en Configuración.</td></tr>`;
+  }).join('') || `<tr><td colspan="3" class="empty">Sin encargados con estos filtros.</td></tr>`;
 
   const resumenPorPersona = allStaff.map(({sede,nombre}) => {
     const registros = nomina.filter(n=>n.sede===sede && n.encargado===nombre);
@@ -1630,8 +1647,7 @@ function renderNomina(){
     const comision = comisionDelMes(sede, nombre, mes);
     const total = salarioFijo + comision;
     const abonado = totalAbonadoNomina(mes, sede, nombre);
-    const saldo = total - abonado;
-    return {sede, nombre, asistencias, faltas, tarifa, salarioFijo, comision, total, abonado, saldo};
+    return {sede, nombre, asistencias, faltas, tarifa, salarioFijo, comision, total, abonado, saldo: total - abonado};
   });
   const totalGeneral = resumenPorPersona.reduce((s,r)=>s+r.total, 0);
   const totalAbonadoGeneral = resumenPorPersona.reduce((s,r)=>s+r.abonado, 0);
@@ -1642,14 +1658,40 @@ function renderNomina(){
     <td data-label="Sede">${esc(r.sede)}</td>
     <td data-label="Asistencias">${r.asistencias}</td>
     <td data-label="Faltas">${r.faltas}</td>
-    <td data-label="Monto/día"><input type="number" class="pctinput tarifainput" data-key="${r.sede}|${r.nombre}" value="${r.tarifa}" min="0" step="0.01"></td>
+    <td data-label="Monto/día"><input type="number" class="pctinput tarifainput" data-key="${esc(r.sede)}|${esc(r.nombre)}" value="${r.tarifa}" min="0" step="0.01"></td>
     <td data-label="Salario fijo">${fmtMoney(r.salarioFijo)}</td>
     <td data-label="Comisión del mes">${fmtMoney(r.comision)}</td>
     <td data-label="Total a pagar"><b>${fmtMoney(r.total)}</b></td>
     <td data-label="Abonado">${fmtMoney(r.abonado)}</td>
     <td data-label="Saldo"><b>${fmtMoney(r.saldo)}</b></td>
     <td><button class="rowbtn" data-pagosnomina="${esc(r.sede)}|${esc(r.nombre)}">💰 Pagos</button></td>
-  </tr>`).join('') || `<tr><td colspan="11" class="empty">Sin encargados.</td></tr>`;
+  </tr>`).join('') || `<tr><td colspan="11" class="empty">Sin encargados con estos filtros.</td></tr>`;
+
+  // Historial de pagos (filtrable) con botones de recibo
+  const historial = [];
+  nominaPagos.forEach(doc => {
+    if(sedeF && doc.sede !== sedeF) return;
+    if(persF && (doc.sede + "|" + doc.encargado) !== persF) return;
+    (doc.pagos||[]).forEach((p, idx) => {
+      if(Number(p.monto||0) <= 0) return;
+      if(desde && p.fecha < desde) return;
+      if(hasta && p.fecha > hasta) return;
+      historial.push({docId: doc.id, idx, sede: doc.sede, nombre: doc.encargado, fecha: p.fecha, monto: Number(p.monto||0), metodo: p.metodo || 'Efectivo'});
+    });
+  });
+  historial.sort((a,b) => String(b.fecha).localeCompare(String(a.fecha)));
+  const totalHistorial = historial.reduce((s,h)=>s+h.monto, 0);
+  const filasHistorial = historial.map(h => `<tr>
+    <td data-label="Fecha">${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}</td>
+    <td data-label="Encargado">${esc(h.nombre)}</td>
+    <td data-label="Sede">${esc(h.sede)}</td>
+    <td data-label="Método">${esc(h.metodo)}</td>
+    <td data-label="Monto"><b>${fmtMoney(h.monto)}</b></td>
+    <td data-label="Recibo">
+      <button class="rowbtn" data-recibo-doc="${esc(h.docId)}" data-recibo-idx="${h.idx}" data-recibo-fmt="pdf">📄 PDF</button>
+      &nbsp;<button class="rowbtn" data-recibo-doc="${esc(h.docId)}" data-recibo-idx="${h.idx}" data-recibo-fmt="jpg">🖼️ JPG</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="6" class="empty">Sin pagos con estos filtros.</td></tr>`;
 
   const monthOptions = (() => {
     const opts = [];
@@ -1662,9 +1704,20 @@ function renderNomina(){
     }
     return opts.join('');
   })();
+  const sedeOptions = ['<option value="">Todas las sucursales</option>', ...sedeNames().map(s=>`<option value="${esc(s)}" ${s===sedeF?'selected':''}>${esc(s)}</option>`)].join('');
+  const personaOptions = ['<option value="">Todo el personal</option>', ...nominaTodoElStaff()
+    .filter(x => !sedeF || x.sede === sedeF)
+    .map(x => { const k = x.sede + "|" + x.nombre; return `<option value="${esc(k)}" ${k===persF?'selected':''}>${esc(x.nombre)}${sedeF ? '' : ' — ' + esc(x.sede)}</option>`; })].join('');
 
   return `
+    ${esSabado ? '<div class="note note-amber">💰 Hoy es sábado de pago: registra los pagos con el botón "Pagos" y descarga el recibo de cada trabajador.</div>' : ''}
     <div class="note">Este módulo solo registra asistencia/falta y calcula un pago simple (días de asistencia × monto por día). No incluye prestaciones, IMSS, aguinaldo ni ningún otro cálculo de ley — es un registro informal para tu control interno.</div>
+
+    <div class="filters">
+      <select id="nominaSede">${sedeOptions}</select>
+      <select id="nominaPersona">${personaOptions}</select>
+      <select id="nominaMes">${monthOptions}</select>
+    </div>
 
     <h2 class="section-title m-0">Registrar asistencia del día</h2>
     <div class="filters">
@@ -1674,23 +1727,45 @@ function renderNomina(){
     <div class="formfoot"><button class="btn gold" id="guardarAsistenciaBtn" type="button">Guardar asistencia del día</button></div>
 
     <h2 class="section-title">Resumen del mes</h2>
-    <div class="note">Total a pagar = salario fijo (asistencias × monto por día) + comisión variable del mes (se actualiza sola conforme registras órdenes). El dueño paga semanal: usa el botón "Pagos" para ir registrando cada abono hasta cubrir el total.</div>
-    <div class="filters">
-      <select id="nominaMes">${monthOptions}</select>
-    </div>
+    <div class="note">Total a pagar = salario fijo (asistencias × monto por día) + comisión variable del mes. Usa "Pagos" para registrar cada abono semanal.</div>
     <table class="commissions"><thead><tr><th>Encargado</th><th>Sede</th><th>Asist.</th><th>Faltas</th><th>Monto/día</th><th>Salario fijo</th><th>Comisión</th><th>Total a pagar</th><th>Abonado</th><th>Saldo</th><th></th></tr></thead>
       <tbody>${filasResumen}</tbody>
       <tfoot><tr class="fw-bold"><td colspan="7" data-label="">Total general</td><td data-label="Total a pagar">${fmtMoney(totalGeneral)}</td><td data-label="Abonado">${fmtMoney(totalAbonadoGeneral)}</td><td data-label="Saldo">${fmtMoney(totalSaldoGeneral)}</td><td></td></tr></tfoot>
+    </table>
+
+    <h2 class="section-title">Historial de pagos y recibos</h2>
+    <div class="filters">
+      <label class="text-soft-sm">Desde <input type="date" id="nominaDesde" value="${desde}"></label>
+      <label class="text-soft-sm">Hasta <input type="date" id="nominaHasta" value="${hasta}"></label>
+      <button class="btn ghost small" id="nominaLimpiarFechas" type="button">Limpiar fechas</button>
+    </div>
+    <table class="commissions"><thead><tr><th>Fecha</th><th>Encargado</th><th>Sede</th><th>Método</th><th>Monto</th><th>Recibo</th></tr></thead>
+      <tbody>${filasHistorial}</tbody>
+      <tfoot><tr class="fw-bold"><td colspan="4" data-label="">Total pagado (filtrado)</td><td data-label="Total">${fmtMoney(totalHistorial)}</td><td></td></tr></tfoot>
     </table>`;
 }
 
 function attachNominaEvents(){
-  document.getElementById('nominaFecha').addEventListener('change', e => { window.__nominaFecha = e.target.value; render(); });
+  document.getElementById('nominaSede').addEventListener('change', e => {
+    window.__nominaSede = e.target.value; window.__nominaPersona = ''; render();
+  });
+  document.getElementById('nominaPersona').addEventListener('change', e => { window.__nominaPersona = e.target.value; render(); });
   document.getElementById('nominaMes').addEventListener('change', async e => {
     window.__nominaMes = e.target.value;
     await loadNominaDelMes(window.__nominaMes);
     render();
   });
+  document.getElementById('nominaFecha').addEventListener('change', e => {
+    window.__nominaFecha = e.target.value;
+    if(e.target.value && e.target.value.slice(0,7) !== (window.__nominaMes || todayStr().slice(0,7))){
+      window.__nominaMes = e.target.value.slice(0,7);
+    }
+    render();
+  });
+  document.getElementById('nominaDesde').addEventListener('change', e => { window.__nominaDesde = e.target.value; render(); });
+  document.getElementById('nominaHasta').addEventListener('change', e => { window.__nominaHasta = e.target.value; render(); });
+  document.getElementById('nominaLimpiarFechas').addEventListener('click', () => { window.__nominaDesde = ''; window.__nominaHasta = ''; render(); });
+
   document.getElementById('guardarAsistenciaBtn').addEventListener('click', async () => {
     const fecha = window.__nominaFecha || todayStr();
     const selects = document.querySelectorAll('.asistencia-select');
@@ -1701,9 +1776,7 @@ function attachNominaEvents(){
       await logAudit('Registrar asistencia', `Fecha ${fecha} — ${selects.length} encargado(s)`);
       alert('Asistencia guardada.');
       render();
-    }catch(e){
-      alert('Error al guardar: ' + e.message);
-    }
+    }catch(e){ alert('Error al guardar: ' + e.message); }
   });
   document.querySelectorAll('.tarifainput').forEach(inp => {
     inp.addEventListener('change', async e => {
@@ -1719,6 +1792,13 @@ function attachNominaEvents(){
       openNominaPagosModal(sede, nombre);
     });
   });
+  document.querySelectorAll('[data-recibo-doc]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const doc = nominaPagos.find(p => p.id === btn.dataset.reciboDoc);
+      if(!doc) return;
+      descargarRecibo(doc.sede, doc.encargado, doc.mes, doc.pagos || [], Number(btn.dataset.reciboIdx), btn.dataset.reciboFmt);
+    });
+  });
 }
 
 let draftNominaPagos = [];
@@ -1732,16 +1812,25 @@ function openNominaPagosModal(sede, nombre){
   const total = salarioFijo + comision;
   const doc = nominaPagoDoc(mes, sede, nombre);
   draftNominaPagos = JSON.parse(JSON.stringify(doc?.pagos || []));
+  draftNominaPagos.forEach(p => { if(!p.metodo) p.metodo = METODOS[0]; });
   const mesLabel = new Date(mes+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'});
 
   function renderRows(){
     document.getElementById('nominaPagosList').innerHTML = draftNominaPagos.map((p,i) => `
-      <div class="subrow"><div class="fields" style="grid-template-columns:1fr 1fr auto;">
-        <label>Fecha <input type="date" data-pi="${i}" data-field="fecha" value="${p.fecha}"></label>
-        <label>Monto <input type="number" data-pi="${i}" data-field="monto" value="${p.monto}" min="0"></label>
-        <button class="btn danger small" data-removepago="${i}" type="button">✕</button>
-      </div></div>`).join('') || `<div class="note">Sin pagos registrados este mes.</div>`;
-    document.querySelectorAll('#nominaPagosList input').forEach(el => {
+      <div class="subrow">
+        <div class="fields fields-payrow">
+          <label>Fecha <input type="date" data-pi="${i}" data-field="fecha" value="${p.fecha}"></label>
+          <label>Monto <input type="number" data-pi="${i}" data-field="monto" value="${p.monto}" min="0"></label>
+          <label>Método <select data-pi="${i}" data-field="metodo">${METODOS.map(m=>`<option ${m===p.metodo?'selected':''}>${m}</option>`).join('')}</select></label>
+          <button class="btn danger small" data-removepago="${i}" type="button">✕</button>
+        </div>
+        <div class="mt-tiny">
+          <button class="rowbtn" data-recibo-pdf="${i}" type="button">📄 Recibo PDF</button>
+          &nbsp;&nbsp;<button class="rowbtn" data-recibo-jpg="${i}" type="button">🖼️ Recibo JPG</button>
+        </div>
+      </div>`).join('') || `<div class="note">Sin pagos registrados este mes.</div>`;
+
+    document.querySelectorAll('#nominaPagosList input, #nominaPagosList select').forEach(el => {
       el.addEventListener('change', e => {
         const f = e.target.dataset.field;
         draftNominaPagos[e.target.dataset.pi][f] = f==='monto' ? Math.max(0, Number(e.target.value)||0) : e.target.value;
@@ -1749,8 +1838,12 @@ function openNominaPagosModal(sede, nombre){
       });
     });
     document.querySelectorAll('[data-removepago]').forEach(b => b.addEventListener('click', () => {
-      draftNominaPagos.splice(Number(b.dataset.removepago),1); renderRows(); updateNominaSubtotal(salarioFijo, comision);
+      draftNominaPagos.splice(Number(b.dataset.removepago),1); renderRows();
     }));
+    document.querySelectorAll('[data-recibo-pdf]').forEach(b => b.addEventListener('click', () =>
+      descargarRecibo(sede, nombre, mes, draftNominaPagos, Number(b.dataset.reciboPdf), 'pdf')));
+    document.querySelectorAll('[data-recibo-jpg]').forEach(b => b.addEventListener('click', () =>
+      descargarRecibo(sede, nombre, mes, draftNominaPagos, Number(b.dataset.reciboJpg), 'jpg')));
     updateNominaSubtotal(salarioFijo, comision);
   }
 
@@ -1769,7 +1862,7 @@ function openNominaPagosModal(sede, nombre){
     </div>`;
   renderRows();
   document.getElementById('cancelBtn').addEventListener('click', () => document.getElementById('overlay').classList.remove('show'));
-  document.getElementById('addPagoNominaBtn').addEventListener('click', () => { draftNominaPagos.push({fecha: todayStr(), monto:0}); renderRows(); });
+  document.getElementById('addPagoNominaBtn').addEventListener('click', () => { draftNominaPagos.push({fecha: todayStr(), monto:0, metodo:METODOS[0]}); renderRows(); });
   document.getElementById('saveNominaPagosBtn').addEventListener('click', async () => {
     const id = nominaPagoDocId(mes, sede, nombre);
     const data = {mes, sede, encargado: nombre, pagos: draftNominaPagos};
@@ -1797,6 +1890,138 @@ function updateNominaSubtotal(salarioFijo, comision){
     <div>💵 Salario fijo: abonado ${fmtMoney(pagadoASalario)} de ${fmtMoney(salarioFijo)} · saldo ${fmtMoney(saldoSalario)}</div>
     <div>📊 Comisión: abonado ${fmtMoney(pagadoAComision)} de ${fmtMoney(comision)} · saldo ${fmtMoney(saldoComision)}</div>
     <div class="fw-bold mt-tiny">Total abonado: ${fmtMoney(abonado)} de ${fmtMoney(total)} · Saldo total: ${fmtMoney(total-abonado)}</div>`;
+}
+
+// ---------- RECIBOS DE PAGO ----------
+function datosRecibo(sede, nombre, mes, pagos, idx){
+  const pago = pagos[idx];
+  const asistencias = diasPagadosMes(sede, nombre, mes);
+  const tarifa = tarifaDiaria(sede, nombre);
+  const salarioFijo = asistencias * tarifa;
+  const comision = comisionDelMes(sede, nombre, mes);
+  const total = salarioFijo + comision;
+  // Acumulado hasta este pago (orden por fecha)
+  const orden = pagos.map((p,i)=>({p,i})).sort((a,b)=> String(a.p.fecha).localeCompare(String(b.p.fecha)) || a.i - b.i);
+  let acumulado = 0;
+  for(const it of orden){ acumulado += Number(it.p.monto||0); if(it.i === idx) break; }
+  const iniciales = nombre.split(/\s+/).map(w=>w[0]||'').join('').toUpperCase().slice(0,3);
+  return {
+    empresa: companyConfig.nombreEmpresa || 'Sastrería',
+    direccion: sedeInfo(sede).direccion || sede,
+    folio: `REC-${String(pago.fecha).replace(/-/g,'')}-${iniciales}${String(idx+1).padStart(2,'0')}`,
+    fechaTxt: new Date(pago.fecha+"T00:00:00").toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'}),
+    mesLabel: new Date(mes+"-02").toLocaleDateString('es-MX',{month:'long',year:'numeric'}),
+    nombre, sede, metodo: pago.metodo || 'Efectivo',
+    monto: Number(pago.monto||0),
+    asistencias, tarifa, salarioFijo, comision, total, acumulado, saldo: total - acumulado
+  };
+}
+
+function filasRecibo(d){
+  return {
+    datos: [
+      ['Folio', d.folio], ['Fecha de pago', d.fechaTxt], ['Pagado a', d.nombre],
+      ['Sucursal', d.sede], ['Periodo', d.mesLabel],
+      ['Concepto', 'Pago semanal de nómina'], ['Método', d.metodo]
+    ],
+    resumen: [
+      [`Salario fijo (${d.asistencias} días × ${fmtMoney(d.tarifa)})`, fmtMoney(d.salarioFijo)],
+      ['Comisión del mes', fmtMoney(d.comision)],
+      ['Total del mes', fmtMoney(d.total)],
+      ['Abonado a la fecha', fmtMoney(d.acumulado)],
+      ['Saldo pendiente', fmtMoney(d.saldo)]
+    ],
+    leyenda: 'Recibo interno de control. No constituye comprobante fiscal (CFDI).'
+  };
+}
+
+function descargarRecibo(sede, nombre, mes, pagos, idx, fmt){
+  const pago = pagos[idx];
+  if(!pago || Number(pago.monto||0) <= 0){ alert('Este pago no tiene un monto válido.'); return; }
+  const d = datosRecibo(sede, nombre, mes, pagos, idx);
+  if(fmt === 'jpg') reciboJPG(d); else reciboPDF(d);
+}
+
+function reciboPDF(d){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a5'});
+  const W = 148, f = filasRecibo(d);
+  let y = 16;
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.text(d.empresa, W/2, y, {align:'center'}); y += 6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(d.direccion, W/2, y, {align:'center'}); y += 9;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.text('RECIBO DE PAGO', W/2, y, {align:'center'}); y += 8;
+
+  const linea = () => { doc.setDrawColor(150); doc.setLineDashPattern([1.5,1.5],0); doc.line(14,y,W-14,y); doc.setLineDashPattern([],0); y += 6; };
+  const fila = (l, v, bold) => {
+    doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(10);
+    doc.text(String(l), 14, y); doc.text(String(v), W-14, y, {align:'right'}); y += 6;
+  };
+  linea();
+  f.datos.forEach(([l,v]) => fila(l, v));
+  linea();
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text('MONTO RECIBIDO', 14, y); doc.text(fmtMoney(d.monto), W-14, y, {align:'right'}); y += 9;
+  linea();
+  f.resumen.forEach(([l,v], i) => fila(l, v, i >= 3));
+  y += 14;
+  doc.setDrawColor(0); doc.line(14, y, 62, y); doc.line(W-62, y, W-14, y); y += 5;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.text('Firma del trabajador', 38, y, {align:'center'});
+  doc.text('Firma de quien paga', W-38, y, {align:'center'}); y += 10;
+  doc.setFontSize(7.5);
+  doc.text(f.leyenda, W/2, y, {align:'center'});
+  doc.save(`recibo_${d.folio}_${d.nombre.replace(/\s+/g,'_')}.pdf`);
+}
+
+function reciboJPG(d){
+  const f = filasRecibo(d);
+  const c = document.createElement('canvas'); c.width = 800; c.height = 1150;
+  const x = c.getContext('2d');
+  const FONT = '"IBM Plex Sans", Arial, sans-serif';
+  x.fillStyle = '#fff'; x.fillRect(0,0,800,1150);
+  let y = 80;
+  const centro = (t, size, bold, color) => {
+    x.fillStyle = color || '#12233A'; x.font = `${bold?700:400} ${size}px ${FONT}`; x.textAlign = 'center';
+    x.fillText(t, 400, y, 680);
+  };
+  const fila = (l, v, bold, size) => {
+    const s = size || 24;
+    x.fillStyle = '#241F19'; x.font = `${bold?700:400} ${s}px ${FONT}`;
+    x.textAlign = 'left'; x.fillText(String(l), 60, y, 400);
+    x.textAlign = 'right'; x.fillText(String(v), 740, y, 380);
+    y += s + 16;
+  };
+  const linea = () => {
+    x.strokeStyle = '#999'; x.lineWidth = 2; x.setLineDash([8,6]);
+    x.beginPath(); x.moveTo(60,y); x.lineTo(740,y); x.stroke(); x.setLineDash([]);
+    y += 36;
+  };
+  centro(d.empresa, 38, true); y += 38;
+  centro(d.direccion, 22, false, '#756A5B'); y += 60;
+  centro('RECIBO DE PAGO', 30, true); y += 30;
+  linea();
+  f.datos.forEach(([l,v]) => fila(l, v));
+  linea();
+  fila('MONTO RECIBIDO', fmtMoney(d.monto), true, 32); y += 6;
+  linea();
+  f.resumen.forEach(([l,v], i) => fila(l, v, i >= 3));
+  y += 90;
+  x.strokeStyle = '#000'; x.lineWidth = 2; x.setLineDash([]);
+  x.beginPath(); x.moveTo(60,y); x.lineTo(340,y); x.moveTo(460,y); x.lineTo(740,y); x.stroke();
+  y += 30;
+  x.fillStyle = '#756A5B'; x.font = `400 20px ${FONT}`; x.textAlign = 'center';
+  x.fillText('Firma del trabajador', 200, y); x.fillText('Firma de quien paga', 600, y);
+  y += 60;
+  x.font = `400 18px ${FONT}`; x.fillText(f.leyenda, 400, y, 700);
+  c.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `recibo_${d.folio}_${d.nombre.replace(/\s+/g,'_')}.jpg`; a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/jpeg', 0.92);
 }
 
 // ============================================================
