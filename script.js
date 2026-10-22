@@ -48,8 +48,8 @@ const MEDIDAS_CAMPOS = {
 // type: 'text' | 'number' | 'email' | 'select' | 'textarea'
 const MEDIDAS_EXTRA_CAMPOS = {
   "Camisa": [
-    {key:'cantidad', label:'Cantidad de camisas', type:'number'},
-    {key:'correo', label:'Correo del cliente', type:'email'},
+    {key:'tela', label:'Tela', type:'text'},
+    {key:'cantidad', label:'Cantidad de camisas (de este diseño)', type:'number'},
     {key:'iniciales', label:'Iniciales (opcional)', type:'text'},
     {key:'inicialesDonde', label:'Dónde van las iniciales', type:'select', options:['Bolsa','Puño','Costado']},
     {key:'inicialesColor', label:'Color de las iniciales', type:'text'},
@@ -61,7 +61,7 @@ const MEDIDAS_EXTRA_CAMPOS = {
     {key:'varillas', label:'Varillas', type:'text'},
     {key:'costura', label:'Costura', type:'text'},
     {key:'tipoCorte', label:'Tipo de corte', type:'text'},
-    {key:'notas', label:'Notas / observaciones', type:'textarea'},
+    {key:'notas', label:'Notas de esta camisa', type:'textarea'},
   ],
   "Saco": [
     {key:'bolsas', label:'Bolsas', type:'text'},
@@ -178,6 +178,34 @@ function resizeImage(file, maxW){
     };
     reader.readAsDataURL(file);
   });
+}
+
+// ---------- Fracciones (medidas en pulgadas) ----------
+// Acepta: "8 3/4", "8-3/4", "3/4", "8.75", "8,75". Guarda número decimal.
+function parseFrac(str){
+  const t = String(str ?? '').trim().replace(',', '.');
+  if(!t) return 0;
+  const m = t.match(/^(?:(\d+(?:\.\d+)?)[\s-]+)?(\d+)\s*\/\s*(\d+)$/);
+  if(m){
+    const den = Number(m[3]);
+    if(!den) return 0;
+    return (m[1] ? Number(m[1]) : 0) + Number(m[2]) / den;
+  }
+  const n = Number(t);
+  return isNaN(n) ? 0 : Math.max(0, n);
+}
+// Muestra el decimal como fracción (precisión de 1/16): 8.75 -> "8 3/4"
+function fmtFrac(n){
+  n = Number(n);
+  if(!n || n < 0) return '';
+  let whole = Math.floor(n);
+  let k = Math.round((n - whole) * 16);
+  if(k === 16){ whole++; k = 0; }
+  if(k === 0) return String(whole);
+  const g = (a,b) => b ? g(b, a % b) : a;
+  const d = g(k, 16);
+  const frac = `${k/d}/${16/d}`;
+  return whole ? `${whole} ${frac}` : frac;
 }
 
 const MEDIDAS_DIAGRAMS = {
@@ -1324,50 +1352,114 @@ function attachMedidasEvents(){
   }));
 }
 
+let draftCamisas = [];
+
+// Compatibilidad: pedidos de camisa guardados antes del cambio (un solo diseño en "extra")
+function camisasDeMedida(m){
+  if(m.camisas && m.camisas.length) return m.camisas;
+  if(m.tipo === 'Camisa'){
+    const rest = {...(m.extra||{})}; delete rest.correo;
+    return Object.values(rest).some(v => v) ? [rest] : [];
+  }
+  return [];
+}
+
 function renderMeasureFields(tipo, medidas){
-  return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (pulg) <input type="number" class="measfield" data-campo="${campo}" value="${medidas[campo]??''}" min="0" step="0.25"></label>`).join('');
+  return MEDIDAS_CAMPOS[tipo].map(campo => `<label>${campo} (pulg) <input type="text" inputmode="text" autocomplete="off" class="measfield" data-campo="${campo}" value="${esc(fmtFrac((medidas||{})[campo]))}" placeholder="ej. 8 3/4"></label>`).join('');
+}
+
+function wireFracInputs(){
+  document.querySelectorAll('.measfield').forEach(inp => {
+    inp.addEventListener('change', () => { inp.value = fmtFrac(parseFrac(inp.value)); });
+  });
+}
+
+function campoHtml(f, val, attrs){
+  val = val ?? '';
+  if(f.type === 'select'){
+    return `<label>${f.label} <select ${attrs}><option value="">—</option>${f.options.map(o=>`<option ${String(val)===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
+  }
+  if(f.type === 'textarea'){
+    return `<label class="full">${f.label} <textarea ${attrs} rows="2">${esc(val)}</textarea></label>`;
+  }
+  return `<label>${f.label} <input type="${f.type}" ${attrs} value="${esc(val)}"></label>`;
 }
 
 function renderExtraFields(tipo, extra){
   const config = MEDIDAS_EXTRA_CAMPOS[tipo] || [];
-  return config.map(f => {
-    const val = extra[f.key] ?? '';
-    if(f.type === 'select'){
-      return `<label>${f.label} <select class="measextra" data-key="${f.key}"><option value="">—</option>${f.options.map(o=>`<option ${String(val)===o?'selected':''}>${o}</option>`).join('')}</select></label>`;
-    }
-    if(f.type === 'textarea'){
-      return `<label class="full">${f.label} <textarea class="measextra w-100" data-key="${f.key}" rows="2">${esc(val)}</textarea></label>`;
-    }
-    return `<label>${f.label} <input type="${f.type}" class="measextra" data-key="${f.key}" value="${esc(val)}"></label>`;
-  }).join('');
+  return config.map(f => campoHtml(f, (extra||{})[f.key], `class="measextra" data-key="${f.key}"`)).join('');
+}
+
+function renderCamisasHtml(){
+  const cfg = MEDIDAS_EXTRA_CAMPOS["Camisa"];
+  return draftCamisas.map((c, i) => `
+    <div class="subrow">
+      <div class="modal-head">
+        <b class="section-label">👔 Camisa ${i+1}</b>
+        ${draftCamisas.length > 1 ? `<button class="btn danger small" type="button" data-removecamisa="${i}">✕ Quitar</button>` : ''}
+      </div>
+      <div class="formgrid">${cfg.map(f => campoHtml(f, c[f.key], `class="camextra" data-ci="${i}" data-key="${f.key}"`)).join('')}</div>
+    </div>`).join('') + `<button class="btn ghost small" id="addCamisaBtn" type="button">+ Agregar otra camisa</button>`;
+}
+
+function syncCamisasFromDom(){
+  document.querySelectorAll('.camextra').forEach(el => {
+    const i = Number(el.dataset.ci);
+    if(draftCamisas[i]) draftCamisas[i][el.dataset.key] = el.value;
+  });
 }
 
 function openMeasureModal(id){
   editingMeasureId = id;
-  const m = id ? measurements.find(x=>x.id===id) : { folio: nextMeasureFolio(), cliente:"", celular:"", correo:"", tipo:"Saco", medidas:{}, extra:{}, notas:"", historial:[] };
+  const m = id ? measurements.find(x=>x.id===id) : { folio: nextMeasureFolio(), cliente:"", celular:"", correo:"", tipo:"Saco", medidas:{}, extra:{}, camisas:[], notas:"", historial:[] };
+  const correo = m.correo || (m.extra && m.extra.correo) || '';
+  draftCamisas = JSON.parse(JSON.stringify(camisasDeMedida(m)));
+
   document.getElementById('modalBox').innerHTML = `
     <h2>${id ? `Editar medidas — ${folioMedidaLabel(m.folio||0)}` : `Nuevas medidas (${folioMedidaLabel(m.folio)})`}</h2>
+    <h3 class="mt-0">Datos del cliente</h3>
     <div class="formgrid">
       <label>Cliente <input type="text" id="m_cliente" value="${esc(m.cliente)}"></label>
       <label>Celular <input type="tel" id="m_celular" value="${esc(m.celular)}"></label>
-      <label>Prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
-      <label class="full">Notas <input type="text" id="m_notas" value="${esc(m.notas||'')}"></label>
+      <label class="full">Correo <input type="email" id="m_correo" value="${esc(correo)}" placeholder="cliente@correo.com"></label>
     </div>
-    <h3>Medidas (pulgadas)</h3>
+    <h3>Pedido</h3>
+    <div class="formgrid">
+      <label>Prenda <select id="m_tipo">${Object.keys(MEDIDAS_CAMPOS).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
+      <label>Notas generales <input type="text" id="m_notas" value="${esc(m.notas||'')}"></label>
+    </div>
+    <h3>Medidas (pulgadas — puedes escribir fracciones: 8 3/4)</h3>
     <div class="measure-layout"><div class="measure-fields" id="measureFields"></div><div class="measure-diagram" id="measureDiagram"></div></div>
-    <h3>Detalles de confección</h3>
-    <div class="formgrid" id="measureExtraFields"></div>
-    ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas).map(([k,v])=>`${k} ${v}"`).join(', ')}</li>`).join('')}</ul></div>` : ''}
+    <h3 id="extraTitle">Detalles de confección</h3>
+    <div id="measureExtraFields"></div>
+    ${(m.historial&&m.historial.length) ? `<div class="historybox"><b>Historial</b><ul>${m.historial.map(h=>`<li>${new Date(h.fecha+"T00:00:00").toLocaleDateString('es-MX')}: ${Object.entries(h.medidas||{}).filter(([k,v])=>v).map(([k,v])=>`${esc(k)} ${fmtFrac(v)}"`).join(', ')}</li>`).join('')}</ul></div>` : ''}
     <div class="formfoot">
       <button class="btn ghost" id="cancelBtn" type="button">Cancelar</button>
       <button class="btn ghost" id="pdfMeasBtn" type="button">📄 Descargar PDF</button>
       <button class="btn gold" id="saveMeasBtn" type="button">Guardar</button>
     </div>`;
+
   function fillFields(){
     const tipo = document.getElementById('m_tipo').value;
     document.getElementById('measureFields').innerHTML = renderMeasureFields(tipo, m.medidas);
+    wireFracInputs();
     document.getElementById('measureDiagram').innerHTML = MEDIDAS_DIAGRAMS[tipo] || '';
-    document.getElementById('measureExtraFields').innerHTML = renderExtraFields(tipo, m.extra||{});
+    const box = document.getElementById('measureExtraFields');
+    const title = document.getElementById('extraTitle');
+    if(tipo === 'Camisa'){
+      if(!draftCamisas.length) draftCamisas.push({});
+      title.textContent = 'Camisas del pedido (cada una con su propio diseño)';
+      box.innerHTML = renderCamisasHtml();
+      document.getElementById('addCamisaBtn').addEventListener('click', () => {
+        syncCamisasFromDom(); draftCamisas.push({}); fillFields();
+      });
+      box.querySelectorAll('[data-removecamisa]').forEach(b => b.addEventListener('click', () => {
+        syncCamisasFromDom(); draftCamisas.splice(Number(b.dataset.removecamisa), 1); fillFields();
+      }));
+    } else {
+      title.textContent = 'Detalles de confección';
+      box.innerHTML = `<div class="formgrid">${renderExtraFields(tipo, m.extra||{})}</div>`;
+    }
   }
   fillFields();
   document.getElementById('m_tipo').addEventListener('change', fillFields);
@@ -1376,21 +1468,27 @@ function openMeasureModal(id){
   document.getElementById('saveMeasBtn').addEventListener('click', async () => {
     const cliente = document.getElementById('m_cliente').value.trim();
     const celular = document.getElementById('m_celular').value.trim();
+    const correo = document.getElementById('m_correo').value.trim();
     const tipo = document.getElementById('m_tipo').value;
     const notas = document.getElementById('m_notas').value.trim();
     if(!cliente || !celular){ alert("Cliente y celular son obligatorios."); return; }
     const medidas = {};
-    document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = Number(inp.value)||0; });
-    const extra = {};
-    document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
+    document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = parseFrac(inp.value); });
+    let extra = {}, camisas = [];
+    if(tipo === 'Camisa'){
+      syncCamisasFromDom();
+      camisas = JSON.parse(JSON.stringify(draftCamisas));
+    } else {
+      document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
+    }
     if(id){
       const historial = m.historial || [];
       if(m.medidas && Object.keys(m.medidas).length) historial.push({fecha: m.fechaActualizacion, medidas: m.medidas});
-      const updated = {...m, cliente, celular, tipo, medidas, extra, notas, fechaActualizacion: todayStr(), historial, id};
+      const updated = {...m, cliente, celular, correo, tipo, medidas, extra, camisas, notas, fechaActualizacion: todayStr(), historial, id};
       await saveMeasurementDoc(updated);
       const idx = measurements.findIndex(x=>x.id===id); measurements[idx] = updated;
     }else{
-      const newM = { folio: m.folio, cliente, celular, tipo, medidas, extra, notas, fechaActualizacion: todayStr(), historial:[] };
+      const newM = { folio: m.folio, cliente, celular, correo, tipo, medidas, extra, camisas, notas, fechaActualizacion: todayStr(), historial:[] };
       const newId = await saveMeasurementDoc(newM);
       measurements.push({...newM, id:newId});
     }
@@ -1417,17 +1515,24 @@ async function deleteMeasurementWithPin(id){
 }
 
 function collectCurrentMeasureFormData(base){
+  const tipo = document.getElementById('m_tipo').value;
   const medidas = {};
-  document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = Number(inp.value)||0; });
-  const extra = {};
-  document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
+  document.querySelectorAll('.measfield').forEach(inp => { medidas[inp.dataset.campo] = parseFrac(inp.value); });
+  let extra = {}, camisas = [];
+  if(tipo === 'Camisa'){
+    syncCamisasFromDom();
+    camisas = JSON.parse(JSON.stringify(draftCamisas));
+  } else {
+    document.querySelectorAll('.measextra').forEach(inp => { extra[inp.dataset.key] = inp.value; });
+  }
   return {
     ...base,
     cliente: document.getElementById('m_cliente').value.trim() || base.cliente,
     celular: document.getElementById('m_celular').value.trim() || base.celular,
-    tipo: document.getElementById('m_tipo').value,
+    correo: document.getElementById('m_correo').value.trim(),
+    tipo,
     notas: document.getElementById('m_notas').value.trim(),
-    medidas, extra,
+    medidas, extra, camisas,
   };
 }
 
@@ -1435,39 +1540,52 @@ function downloadMeasurementPDF(m){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   let y = 18;
+  const hueco = (n) => { if(y + (n||6) > 280){ doc.addPage(); y = 18; } };
+  const linea = (label, val) => { hueco(6); doc.text(`${label}: ${val ?? '—'}`, 14, y); y += 6; };
+  const parrafo = (txt) => { doc.splitTextToSize(txt, 180).forEach(l => { hueco(6); doc.text(l, 14, y); y += 6; }); };
+  const titulo = (txt) => { hueco(10); doc.setFont('helvetica','bold'); doc.text(txt, 14, y); y += 6; doc.setFont('helvetica','normal'); };
+
   doc.setFont('helvetica','bold'); doc.setFontSize(15);
   doc.text(companyConfig.nombreEmpresa || 'Sastrería', 14, y); y += 7;
   doc.setFontSize(12); doc.text(`Orden de trabajo ${folioMedidaLabel(m.folio||0)}`, 14, y); y += 9;
   doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
-  const linea = (label, val) => { doc.text(`${label}: ${val ?? '—'}`, 14, y); y += 6; };
   linea('Cliente', m.cliente);
   linea('Celular', m.celular);
-  if(m.extra && m.extra.correo) linea('Correo', m.extra.correo);
+  const correo = m.correo || (m.extra && m.extra.correo);
+  if(correo) linea('Correo', correo);
   linea('Prenda', m.tipo);
   linea('Actualizado', m.fechaActualizacion ? new Date(m.fechaActualizacion+"T00:00:00").toLocaleDateString('es-MX') : new Date().toLocaleDateString('es-MX') + ' (sin guardar aún)');
   y += 3;
-  doc.setFont('helvetica','bold'); doc.text('Medidas (pulgadas)', 14, y); y += 6;
-  doc.setFont('helvetica','normal');
-  MEDIDAS_CAMPOS[m.tipo].forEach(campo => { linea(campo, `${m.medidas[campo] ?? '—'}"`); });
-  const extraConfig = MEDIDAS_EXTRA_CAMPOS[m.tipo] || [];
-  if(extraConfig.length){
-    y += 3;
-    doc.setFont('helvetica','bold'); doc.text('Detalles de confección', 14, y); y += 6;
-    doc.setFont('helvetica','normal');
-    extraConfig.forEach(f => {
-      if(f.key === 'correo') return; // ya mostrado arriba
-      const val = (m.extra||{})[f.key];
-      if(!val) return;
-      const text = doc.splitTextToSize(`${f.label}: ${val}`, 180);
-      doc.text(text, 14, y); y += 6*text.length;
+  titulo('Medidas (pulgadas)');
+  MEDIDAS_CAMPOS[m.tipo].forEach(campo => {
+    const v = fmtFrac((m.medidas||{})[campo]);
+    linea(campo, v ? `${v}"` : '—');
+  });
+
+  if(m.tipo === 'Camisa'){
+    const camisas = camisasDeMedida(m);
+    const cfg = MEDIDAS_EXTRA_CAMPOS["Camisa"];
+    camisas.forEach((c, i) => {
+      y += 3;
+      titulo(`Camisa ${i+1} de ${camisas.length}`);
+      cfg.forEach(f => { const val = c[f.key]; if(val) parrafo(`${f.label}: ${val}`); });
     });
+  } else {
+    const extraConfig = MEDIDAS_EXTRA_CAMPOS[m.tipo] || [];
+    if(extraConfig.length){
+      y += 3;
+      titulo('Detalles de confección');
+      extraConfig.forEach(f => {
+        const val = (m.extra||{})[f.key];
+        if(!val) return;
+        parrafo(`${f.label}: ${val}`);
+      });
+    }
   }
   if(m.notas){
     y += 3;
-    doc.setFont('helvetica','bold'); doc.text('Notas', 14, y); y += 6;
-    doc.setFont('helvetica','normal');
-    const text = doc.splitTextToSize(m.notas, 180);
-    doc.text(text, 14, y);
+    titulo('Notas generales');
+    parrafo(m.notas);
   }
   doc.save(`medidas_${folioMedidaLabel(m.folio||0)}_${(m.cliente||'sin_nombre').trim().replace(/\s+/g,'_') || 'sin_nombre'}.pdf`);
 }
